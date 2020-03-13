@@ -1,0 +1,13 @@
+gitpython
+tqdm
+joblib
+astor
+docstring-parser
+gevent
+requests
+nltk
+numpy
+scikit-learn
+pandas
+gensim
+torch
