@@ -199,26 +199,45 @@ def make_batch_prediction_TW(model: nn.Module, X_id, X_tok, X_cm, X_type, top_n=
     with torch.no_grad():
         # Compute model output
         outputs = model(X_id, X_tok, X_cm, X_type)
-        # Max for each label
-        labels = np.argsort(outputs.data.cpu().numpy(), axis=1)
-        labels = np.flip(labels, axis=1)
+        
+        # Prediction on GPU
+        labels = torch.argsort(outputs, dim=1, descending=True)
         labels = labels[:, :top_n]
-
+    
+        # Prediction on CPU
+        #labels = np.argsort(outputs.data.cpu().numpy(), axis=1)
+        #labels = np.flip(labels, axis=1)
+        #labels = labels[:, :top_n]
+        
         return outputs, labels
 
 
 def evaluate_TW(model: nn.Module, data_loader: DataLoader, top_n=1):
-    true_labels = []
-    predicted_labels = []
+    
+    #true_labels = []
+    #predicted_labels = []
+    
+    # Keeps values of labels on GPU
+    true_labels = torch.tensor([], dtype=torch.long).to(device)
+    predicted_labels = torch.tensor([], dtype=torch.long).to(device)
 
     for i, (batch_id, batch_tok, batch_cm, batch_type, labels) in enumerate(data_loader):
         _, batch_labels = make_batch_prediction_TW(model, batch_id.to(device), batch_tok.to(device),
                                                    batch_cm.to(device), batch_type.to(device), top_n=top_n)
-        predicted_labels.append(batch_labels)
-        true_labels.append(labels)
+        
 
-    true_labels = np.hstack(true_labels)
-    predicted_labels = np.vstack(predicted_labels)
+        predicted_labels = torch.cat((predicted_labels, batch_labels), 0)
+        true_labels = torch.cat((true_labels, labels.to(device)), 0)
+        
+        #predicted_labels.append(batch_labels.data.cpu().numpy())
+        #predicted_labels.append(batch_labels)
+        #true_labels.append(labels)
+
+    #true_labels = np.hstack(true_labels)
+    #predicted_labels = np.vstack(predicted_labels)
+
+    true_labels = true_labels.data.cpu().numpy()
+    predicted_labels = predicted_labels.data.cpu().numpy()
 
     return true_labels, predicted_labels
 
