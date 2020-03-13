@@ -37,6 +37,8 @@ python TW_model.py --o $OUTPUT_FOLDER
 ```
 `$OUTPUT_FOLDER`: Note that this is the output folder that you specified in the extractor part.
 
+To change the hyper-parameters of the neural model, you can change the values in the file `data/tw_model_learning_params.json`.
+
 ### Notebook
 To run all the steps of TypeWriter manually with explanation, check out the notebook `main_TW.ipynb`.
 
