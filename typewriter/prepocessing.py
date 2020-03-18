@@ -39,7 +39,7 @@ def gen_argument_df_TW(df: pd.DataFrame) -> pd.DataFrame:
 
             # Ignore self arg
             #if arg_name != 'self':
-            arg_type = literal_eval(row['arg_types'])[p_i]
+            arg_type = literal_eval(row['arg_types'])[p_i].strip('\"')
 
             # Ignore Any or None types
             # if arg_type == '' or arg_type == 'Any' or arg_type == 'None':
