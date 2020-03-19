@@ -45,8 +45,10 @@ class ModuleExtractor():
         #imports = import_finder.get_imports(file)
 
         # Get imports from the specified file and the Python version of the system
-        imports = parsepy.get_imports(file, sys.version_info[:2])
+        # imports = parsepy.get_imports(file, sys.version_info[:2])
 
+        imports_deep = self.get_dependencies(file)
+        
         # The commented out code also adds the file that we are examining as an import
         # to retrieve the type definitions here. However, this is commented out as this
         # is done in the AST parsing step.
@@ -54,7 +56,7 @@ class ModuleExtractor():
         # file_import = parsepy.ImportStatement(file_import_name, None, False, False, file)
         # imports.append(file_import)
 
-        return imports
+        return imports_deep
 
     def get_module(self, import_name):
         """
@@ -214,33 +216,41 @@ class ModuleExtractor():
         
         return types
 
-    # def get_dependencies(self, file):
-    #     """
-    #     Gets the dependencies for the specified file.
+    def get_dependencies(self, file):
+        """
+        Gets the dependencies for the specified file.
 
-    #     :param: file  File path
-    #     """
+        :param: file  File path
+        """
 
-    #     # TODO: This could (and should) potentially be optimized to (perhaps) generate the
-    #     # TODO: dependency tree only once and cache it somewhere.
+        # TODO: This could (and should) potentially be optimized to (perhaps) generate the
+        # TODO: dependency tree only once and cache it somewhere.
 
-    #     # Create environment
-    #     default_version = '%d.%d' % sys.version_info[:2]
-    #     args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
-    #     env = environment.create_from_args(args)
+        # Create environment & arguments used for creating graph
+        default_version = '%d.%d' % sys.version_info[:2]
+        args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
+        env = environment.create_from_args(args)
 
-    #     # Create import graph
-    #     importGraph = graph.ImportGraph.create(env, args.inputs, True)
+        # Create import graph
+        importGraph = graph.ImportGraph.create(env, args.inputs, True)
+        
+        # Get a topologicgally sorted list of files
+        sorted_files = importGraph.sorted_source_files()
 
-    #     print((importGraph.inspect_graph()))
+        # Get all imports in the form of full file paths
+        all_imports = []
 
-    #     # Retrieve full file path
-    #     full_path = os.path.abspath(file)
+        for t in sorted_files:
+            # Sorted files returns a list of lists, so we concatenate all the lists
+            all_imports = all_imports + t
 
-    #     # Get the dependencies for the file
-    #     file_dependencies = importGraph.get_file_deps(full_path)
+        final_imps = []
 
-    #     return file_dependencies
+        for a in all_imports:
+            imps = parsepy.get_imports(a, sys.version_info[:2])
+            final_imps = final_imps + imps
+
+        return final_imps
 
     # def get_dependency_modules(self, file):
     #     file_dependencies = self.get_dependencies(file)
@@ -319,10 +329,10 @@ class ModuleExtractor():
 extractor = ModuleExtractor()
 
 fname = "module_test.py"
-import_entries = extractor.get_imports(fname)
+#import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-#types = extractor.get_types(fname)
+types = extractor.get_types(fname)
 
-#print(types)
+print(types)
 #print(modules)
-print(import_entries)
+#print(import_entries)
