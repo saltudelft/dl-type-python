@@ -113,9 +113,8 @@ class ModuleExtractor():
         offset = len(import_from)+1
 
         # Import cannot be resolved, as new_name == name
-        # TODO: Might be a redundant check, as from imports always have a '.'
         if (len(import_name) < offset):
-            return False
+            return None
 
         # Remove the new_name from the name
         # Attempt to resolve a module from the base name
@@ -131,7 +130,7 @@ class ModuleExtractor():
             is_valid_type = self.is_type_member(attribute)
 
             if (is_valid_type):
-                name = "???" # TODO: Replace this with proper placeholder
+                name = "???" # TODO: Replace this with proper placeholder (Any/None/sth else?)
 
                 # TODO: Probably a better way to retrieve type name here.
                 # TODO: Seems to work for classes, typing type aliases and typing newtypes
@@ -320,10 +319,10 @@ class ModuleExtractor():
 extractor = ModuleExtractor()
 
 fname = "module_test.py"
-#import_entries = extractor.get_imports(fname)
+import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-types = extractor.get_types(fname)
+#types = extractor.get_types(fname)
 
-print(types)
+#print(types)
 #print(modules)
-#print(import_entries)
+print(import_entries)
