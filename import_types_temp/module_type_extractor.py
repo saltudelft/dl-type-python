@@ -66,6 +66,9 @@ class ModuleExtractor():
 
         # Create import graph
         importGraph = graph.ImportGraph.create(env, args.inputs, True)
+
+        # Prints unresolved imports
+        #print(importGraph.get_all_unresolved())
         
         # Get a topologicgally sorted list of files
         import_statements = importGraph.sorted_source_files()
@@ -82,14 +85,16 @@ class ModuleExtractor():
         # Helper function to combine two paths (or one list of ImportStatements and one path)
         # to a coherent list of ImportStatements
         def reduce_paths(p1, p2):
+            p2_statements = self.get_file_import_statements(p2)
+
             # First path is a string. That means this is the first reduction operation,
             # and we must first convert the path to a list of import statements.
             if (isinstance(p1, str)):
                 # Combine path1 import statements & path 2 import statements
-                return self.get_file_import_statements(p1) + self.get_file_import_statements(p2)
+                return self.get_file_import_statements(p1) + p2_statements
             else:
                 # Combine previous import statements with path 2 import statements
-                return p1 + self.get_file_import_statements(p2)
+                return p1 + p2_statements
 
 
         import_statements = reduce(reduce_paths, import_statements)
@@ -263,7 +268,15 @@ class ModuleExtractor():
         :param: file  filename
         :return: List of ImportStatement objects
         """
-        return parsepy.get_imports(file, sys.version_info[:2])
+        
+        if (file.endswith(".py")):
+            return parsepy.get_imports(file, sys.version_info[:2])
+        else:
+            # There are cases where we might be analyzing a .pyd, .pyc or .pyo import.
+            # In such cases, we want to return empty, since otherwise the behavior
+            # above causes crashes.
+            # TODO: Could we tailor to these cases as well somehow?
+            return []
 
     def is_type_member(self, member):
         """
