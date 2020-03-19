@@ -6,7 +6,7 @@ import argparse
 import sys, inspect, os
 import importlib
 
-
+from functools import reduce
 from typing import _GenericAlias, NewType
 
 
@@ -36,6 +36,8 @@ class ModuleExtractor():
         Returns the import statements for the specified file, which contains information
         of the import name, the alias of the import, whether it is an import from or not,
         whether the import is a star import and the full path to the import.
+        The method checks all transitive imports as well, and returns the import statements
+        of the transitive imports as well.
 
         :param: file  Name of the file
         :return: List of ImportStatement objects containing information about imports
@@ -47,8 +49,6 @@ class ModuleExtractor():
         # Get imports from the specified file and the Python version of the system
         # imports = parsepy.get_imports(file, sys.version_info[:2])
 
-        imports_deep = self.get_dependencies(file)
-        
         # The commented out code also adds the file that we are examining as an import
         # to retrieve the type definitions here. However, this is commented out as this
         # is done in the AST parsing step.
@@ -56,7 +56,47 @@ class ModuleExtractor():
         # file_import = parsepy.ImportStatement(file_import_name, None, False, False, file)
         # imports.append(file_import)
 
-        return imports_deep
+        # TODO: This could (and should) potentially be optimized to (perhaps) generate the
+        # TODO: dependency tree only once and cache it somewhere.
+
+        # Create environment & arguments used for creating graph
+        default_version = '%d.%d' % sys.version_info[:2]
+        args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
+        env = environment.create_from_args(args)
+
+        # Create import graph
+        importGraph = graph.ImportGraph.create(env, args.inputs, True)
+        
+        # Get a topologicgally sorted list of files
+        import_statements = importGraph.sorted_source_files()
+
+        # Since the sorted source files returns a list of lists, we concatenate them
+        # to form a coherent list of paths.
+        import_statements = reduce(lambda a,b: a + b, import_statements)
+        
+        # Finally, we want to get the import statements for each of the dependency files.
+        # We do this by reducing the list of paths to first get the imports for that file,
+        # and then we concatenate each of the import statement lists together to finally form
+        # a coherent list of import statements.
+
+        # Helper function to combine two paths (or one list of ImportStatements and one path)
+        # to a coherent list of ImportStatements
+        def reduce_paths(p1, p2):
+            # First path is a string. That means this is the first reduction operation,
+            # and we must first convert the path to a list of import statements.
+            if (isinstance(p1, str)):
+                # Combine path1 import statements & path 2 import statements
+                return self.get_file_import_statements(p1) + self.get_file_import_statements(p2)
+            else:
+                # Combine previous import statements with path 2 import statements
+                return p1 + self.get_file_import_statements(p2)
+
+
+        import_statements = reduce(reduce_paths, import_statements)
+
+        return import_statements
+
+
 
     def get_module(self, import_name):
         """
@@ -216,52 +256,14 @@ class ModuleExtractor():
         
         return types
 
-    def get_dependencies(self, file):
+    def get_file_import_statements(self, file):
         """
-        Gets the dependencies for the specified file.
+        Gets the import statements for the specified file. Does not check imports of imports.
 
-        :param: file  File path
+        :param: file  filename
+        :return: List of ImportStatement objects
         """
-
-        # TODO: This could (and should) potentially be optimized to (perhaps) generate the
-        # TODO: dependency tree only once and cache it somewhere.
-
-        # Create environment & arguments used for creating graph
-        default_version = '%d.%d' % sys.version_info[:2]
-        args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
-        env = environment.create_from_args(args)
-
-        # Create import graph
-        importGraph = graph.ImportGraph.create(env, args.inputs, True)
-        
-        # Get a topologicgally sorted list of files
-        sorted_files = importGraph.sorted_source_files()
-
-        # Get all imports in the form of full file paths
-        all_imports = []
-
-        for t in sorted_files:
-            # Sorted files returns a list of lists, so we concatenate all the lists
-            all_imports = all_imports + t
-
-        final_imps = []
-
-        for a in all_imports:
-            imps = parsepy.get_imports(a, sys.version_info[:2])
-            final_imps = final_imps + imps
-
-        return final_imps
-
-    # def get_dependency_modules(self, file):
-    #     file_dependencies = self.get_dependencies(file)
-
-    #     # Traverse through lists of file dependencies
-    #     for f in file_dependencies:
-    #         # Go through paths of the current file dep list
-    #         for path in f:
-    #             print(path)
-
-    #             # TODO: Load modules
+        return parsepy.get_imports(file, sys.version_info[:2])
 
     def is_type_member(self, member):
         """
