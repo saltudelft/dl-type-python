@@ -141,11 +141,11 @@ class ModuleExtractor():
         else:
             return None
 
-    def is_from_import_type(self, import_name, import_from):
+    def get_from_import_type(self, import_name, import_from):
         """
         Checks whether the specified import_from substring refers to a type in
         the fully qualified import name string.
-        Returns the inspect member if that is the case, and false otherwise.
+        Returns the inspect member if that is the case, and None otherwise.
 
         Example:
         typing.Dict: typing.Dict
@@ -153,7 +153,7 @@ class ModuleExtractor():
 
         :param: import_name  Full import name
         :param: import_from  From import portion of the full import name
-        :return: True if import_from refers to type, False otherwise
+        :return: member if import_from refers to type, None otherwise
         """
 
         # Get the length offset of the import_from name + 1 (to account for the dot before the new name)
@@ -227,7 +227,7 @@ class ModuleExtractor():
             else:
                 # Import not a module; Check whether the from import refers to a type.
                 # If it does, add it to the extra imported types set.
-                from_type = self.is_from_import_type(import_entry.name, import_entry.new_name)
+                from_type = self.get_from_import_type(import_entry.name, import_entry.new_name)
 
                 if (from_type is not None):
                     imported_types.add(from_type)
