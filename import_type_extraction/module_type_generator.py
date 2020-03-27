@@ -6,6 +6,7 @@ import pandas as pd
 sys.path.append('../')
 from dltpy import config
 from dltpy.preprocessing.pipeline import project_filter, list_files
+from dltpy.input_preparation.generate_df import parse_df
 from dltpy.preprocessing.utils import ParallelExecutor
 
 from joblib import delayed
@@ -21,6 +22,11 @@ class ModuleGenerator():
         """
         Processes the specified list of repositories for import types, by extracting the import
         types for each project, and saving the corresponding CSV files.
+        Runs the processing in parallel for each repo.
+
+        :param: repos_list List of repositories
+        :param: jobs       Number of jobs to use
+        :param: start      Starting index for ID
         """
  
         ParallelExecutor(n_jobs=jobs)(total=len(repos_list))(
@@ -36,6 +42,9 @@ class ModuleGenerator():
         TODO: Code adapted from pipeline.py. In the future, it would
         probably be better to extract the common functionality to reduce
         code redundancy in terms of changes.
+
+        :param: i        ID of the project
+        :param: project  Project dictionary (expected to contain at least the author, repo fields)
         """
         project_id = f'{project["author"]}/{project["repo"]}'
         print(f'Running pipeline for project {i} {project_id}')
@@ -58,7 +67,9 @@ class ModuleGenerator():
         for filename in file_list:
             # Get import types & add to dictionary
             types = self.type_extractor.get_types(filename)
-            extracted_types[filename] = list(types)
+            
+            # Filter out builtin types
+            extracted_types[filename] = [t for t in types if not t.startswith('builtins.')]
 
         # Add entry for 'files' in project to contain dicts of filename and types
         project['files'] = [{'filename': filename, 'types': extracted_types[filename] }
@@ -94,6 +105,8 @@ class ModuleGenerator():
         Assumes the project already has a 'files' field which contains
         nested dictionary entries of {'filename', 'types'} for each file.
         If there is no 'files' field, nothing is written; the project is simply skipped.
+
+        :param: project  Project to write
         """
         import_types = []
         columns = ['author', 'repo', 'file', 'types']
@@ -115,3 +128,14 @@ class ModuleGenerator():
         
         type_df = pd.DataFrame(import_types, columns=columns)
         type_df.to_csv(self.get_project_filename(project), index=False)
+
+    def concatenate_dataframes(self, out_dir: str) -> None:
+        """
+        Concatenates the CSV files present in the 'output_dir' location,
+        and saves them to a single CSV file.
+
+        :param: out_dir  Location to output CSV to (including filename)
+        """
+        DATA_FILES = list_files(self.output_dir)
+        df = parse_df(DATA_FILES, batch_size=128)
+        df.to_csv(out_dir, index=False)
