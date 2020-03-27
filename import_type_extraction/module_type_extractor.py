@@ -276,7 +276,15 @@ class ModuleExtractor():
         """
         
         if (file.endswith(".py")):
-            return parsepy.get_imports(file, sys.version_info[:2])
+            try:
+                return parsepy.get_imports(file, sys.version_info[:2])
+            except:
+                # There are cases where templating is used in python in the form of {%- ... %}, which
+                # causes the importlab import parser to fail. This can either be alleviated by
+                # building another static analyzer that will check for import statements, or simply
+                # opting to not return visible types.
+                # See example: aio-libs/create-aio-app/create_aio_app/template/{{cookiecutter.project_name}}/conftest.py
+                return []
         else:
             # There are cases where we might be analyzing a .pyd, .pyc or .pyo import.
             # In such cases, we want to return empty, since otherwise the behavior
@@ -302,7 +310,15 @@ class ModuleExtractor():
         # Alternatively, the attribute has the attribute supertype, it means that the attribute has
         # been created using the NewType annotation.
         # TODO: This could possibly use major improvements; One concern is that this might break in newer Python versions.
-        return hasattr(member, "__subclasscheck__") or hasattr(member, "__supertype__")
+        try:
+            return hasattr(member, "__subclasscheck__") or hasattr(member, "__supertype__")
+        except:
+            # There are cases where hasattr results in passing the call around, which ultimately might
+            # result in a crash. Thus, we must be mindful of catching an exception, and returning False
+            # in such a case.
+            # Example: Analyzing werkzeug/locals.py will pass it on to Flask, which will tell us that
+            # we are working outside of application context, ultimately resulting in a crash.
+            return False
 
         # A bit more of a naive solution; Seems to overlook some types.
         # We only care about classes and type alises.
@@ -349,12 +365,12 @@ class ModuleExtractor():
         
         return type_strings
 
+extractor = ModuleExtractor()
+fname = "breaking.py"
 
-#extractor = ModuleExtractor()
-#fname = "type_cases.py"
 #import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-#types = extractor.get_types(fname)
-#print(types)
+types = extractor.get_types(fname)
+print(types)
 #print(modules)
 #print(import_entries)
