@@ -86,16 +86,15 @@ class ModuleExtractor():
         # to a coherent list of ImportStatements
         def reduce_paths(p1, p2):
             p2_statements = self.get_file_import_statements(p2)
+            
+            # Combine previous import statements with path 2 import statements
+            return p1 + p2_statements
 
-            # First path is a string. That means this is the first reduction operation,
-            # and we must first convert the path to a list of import statements.
-            if (isinstance(p1, str)):
-                # Combine path1 import statements & path 2 import statements
-                return self.get_file_import_statements(p1) + p2_statements
-            else:
-                # Combine previous import statements with path 2 import statements
-                return p1 + p2_statements
 
+        # Convert first import statement to file import statements so that
+        # the reduce operation below works as expected.
+        if (len(import_statements) > 0):
+            import_statements[0] = self.get_file_import_statements(import_statements[0])
 
         import_statements = reduce(reduce_paths, import_statements)
 
@@ -177,14 +176,21 @@ class ModuleExtractor():
             is_valid_type = self.is_type_member(attribute)
 
             if (is_valid_type):
-                name = "???" # TODO: Replace this with proper placeholder (Any/None/sth else?)
+                name = None
 
                 # TODO: Probably a better way to retrieve type name here.
                 # TODO: Seems to work for classes, typing type aliases and typing newtypes
                 if hasattr(attribute, "__name__"):
                     name = attribute.__name__
-                elif hasattr(attribute, "_name"):
+                
+                # Fallback option; Try _name attribute
+                if name is None and hasattr(attribute, "_name"):
                     name = attribute._name
+
+                # Final fallback option. For some typing types, _name and __name__
+                # resolve to None, so we use __origin__ instead (example: typing.Union types)
+                if name is None and hasattr(attribute, "__origin__"):
+                    name = str(attribute.__origin__)
                 
                 return (name, attribute)
         
@@ -337,17 +343,18 @@ class ModuleExtractor():
         :param: members  Container of member tuples in form (name, member)
         :return: Set of (qualified) types as strings
         """
-        type_strings = set([m[1].__module__ + "." + m[0] for m in members])
+        # Ignore types for which we cannot resolve the name for.
+        # TODO: Maybe we can also handle edge cases here, if there are any remaining?
+        type_strings = set([m[1].__module__ + "." + m[0] for m in members if m[0] != None])
+        
         return type_strings
 
 
-extractor = ModuleExtractor()
-
-fname = "module_test.py"
+#extractor = ModuleExtractor()
+#fname = "type_cases.py"
 #import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-types = extractor.get_types(fname)
-
-print(types)
+#types = extractor.get_types(fname)
+#print(types)
 #print(modules)
 #print(import_entries)
