@@ -41,13 +41,12 @@ def install_packages(packages):
         try:
             subprocess.check_call([sys.executable, '-m', 'pip', 'install', p])
         except:
+            # Ignore package if we cannot install it
             continue
 
 # Source: https://hugovk.github.io/top-pypi-packages/
 url = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-365-days.json"
 
 packages = extract_packages_from_url(url)
-
 print(packages)
-
 install_packages(packages)
