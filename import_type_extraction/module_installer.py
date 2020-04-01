@@ -37,7 +37,11 @@ def install_packages(packages):
     """
 
     # Install all specified modules
-    subprocess.check_call([sys.executable, '-m', 'pip', 'install', *packages])
+    for p in packages:
+        try:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', p])
+        except:
+            continue
 
 # Source: https://hugovk.github.io/top-pypi-packages/
 url = "https://hugovk.github.io/top-pypi-packages/top-pypi-packages-365-days.json"
@@ -46,4 +50,4 @@ packages = extract_packages_from_url(url)
 
 print(packages)
 
-#install_packages(packages)
+install_packages(packages)
