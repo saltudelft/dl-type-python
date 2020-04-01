@@ -7,7 +7,7 @@ import sys, inspect, os
 import importlib
 
 from functools import reduce
-from typing import _GenericAlias, NewType
+from typing import NewType
 
 
 class ModuleExtractor():
