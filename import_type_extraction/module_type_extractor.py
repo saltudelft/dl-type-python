@@ -126,22 +126,26 @@ class ModuleExtractor():
         #     # Module in system; Retrieve directly
         #     module = sys.modules[name]
 
-        # Check whether the import entry is a module. It is possible that the
-        # import statement refers to an import of a module member (e.g. function or class),
-        # in which case the import will be resolved to 'None'. Otherwise, the import
-        # is resolved to a non-None path. Note that the path will be resolved correctly
-        # if the import is a star statement (i.e. it will return a non-None path)
-        is_module = import_finder._resolve_import(import_name) is not None
-        
-        # Import is a module if it has a path
-        if (is_module):
-            # Retrieve the package given by the import name. We have to split by the '.'
-            # to conform to the function call's signature.
-            # Note that the package will be found, since the _resolve_import method above
-            # will load the module as well, and if a path is returned, we will get the package.
-            i, module = import_finder._find_package(import_name.split("."))
-            return module
-        else:
+        try:
+            # Check whether the import entry is a module. It is possible that the
+            # import statement refers to an import of a module member (e.g. function or class),
+            # in which case the import will be resolved to 'None'. Otherwise, the import
+            # is resolved to a non-None path. Note that the path will be resolved correctly
+            # if the import is a star statement (i.e. it will return a non-None path)
+            is_module = import_finder._resolve_import(import_name) is not None
+            
+            # Import is a module if it has a path
+            if (is_module):
+                # Retrieve the package given by the import name. We have to split by the '.'
+                # to conform to the function call's signature.
+                # Note that the package will be found, since the _resolve_import method above
+                # will load the module as well, and if a path is returned, we will get the package.
+                i, module = import_finder._find_package(import_name.split("."))
+                return module
+            else:
+                return None
+        except:
+            # Resolving imports/finding package may fail in certain scenarios
             return None
 
     def get_from_import_type(self, import_name, import_from):
@@ -171,20 +175,24 @@ class ModuleExtractor():
         base_name = import_name[0:-offset]
         module = self.get_module(base_name)
 
-        # Check whether the import from name is actually an attribute
-        # in the module that we just imported (provided that the importing was successful).
-        # If new_name is found as an attribute, that means it is a member (function, class, etc.)
-        # in the module.
-        if (module is not None and hasattr(module, import_from)):
-            attribute = getattr(module, import_from)
-            is_valid_type = self.is_type_member(attribute)
+        try:
+            # Check whether the import from name is actually an attribute
+            # in the module that we just imported (provided that the importing was successful).
+            # If new_name is found as an attribute, that means it is a member (function, class, etc.)
+            # in the module.
+            if (module is not None and hasattr(module, import_from)):
+                attribute = getattr(module, import_from)
+                is_valid_type = self.is_type_member(attribute)
 
-            if (is_valid_type):
-                # The name of the type is the 'from' portion of the
-                # import (the last substring of the import right after
-                # the final dot)
-                return (import_from, attribute.__module__)
-        
+                if (is_valid_type):
+                    # The name of the type is the 'from' portion of the
+                    # import (the last substring of the import right after
+                    # the final dot)
+                    return (import_from, attribute.__module__)
+        except:
+            # Checking for attribute in module might result in errors
+            pass
+
         # No 'additional' import type determined
         return None
 
