@@ -131,6 +131,8 @@ def filter_return_dp(df: pd.DataFrame) -> pd.DataFrame:
     df = df[df['return_expr'].apply(lambda x: len(literal_eval(x))) > 0]
     print(f"Functions after dropping on empty return expression {len(df)}")
 
+    df['return_type'] = df['return_type'].apply(lambda x: x.strip('\"'))
+
     return df
 
 
