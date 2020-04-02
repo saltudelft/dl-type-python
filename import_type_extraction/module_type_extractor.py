@@ -346,8 +346,12 @@ class ModuleExtractor():
         :param: module  Module to retrieve types from
         :return: List of types
         """
-        members = inspect.getmembers(module, predicate=self.is_type_member)
-        return self.get_types_from_members(members)
+        try:
+            members = inspect.getmembers(module, predicate=self.is_type_member)
+            return self.get_types_from_members(members)
+        except:
+            # In very rare cases, getmembers might crash due to using the hasattr/getattr method call.
+            return []
 
     def get_types_from_members(self, members):
         """
