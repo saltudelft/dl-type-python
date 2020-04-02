@@ -176,23 +176,10 @@ class ModuleExtractor():
             is_valid_type = self.is_type_member(attribute)
 
             if (is_valid_type):
-                name = None
-
-                # TODO: Probably a better way to retrieve type name here.
-                # TODO: Seems to work for classes, typing type aliases and typing newtypes
-                if hasattr(attribute, "__name__"):
-                    name = attribute.__name__
-                
-                # Fallback option; Try _name attribute
-                if name is None and hasattr(attribute, "_name"):
-                    name = attribute._name
-
-                # Final fallback option. For some typing types, _name and __name__
-                # resolve to None, so we use __origin__ instead (example: typing.Union types)
-                if name is None and hasattr(attribute, "__origin__"):
-                    name = str(attribute.__origin__)
-                
-                return (name, attribute)
+                # The name of the type is the 'from' portion of the
+                # import (the last substring of the import right after
+                # the final dot)
+                return (import_from, attribute.__module__)
         
         # No 'additional' import type determined
         return None
@@ -251,7 +238,8 @@ class ModuleExtractor():
         # Retrieve the resolved modules and additional types
         modules, additional_types = self.resolve_modules(file)
 
-        additional_type_set = self.get_types_from_members(additional_types)
+        # Construct fully qualified module strings from additional types
+        additional_type_set = set([m[1] + "." + m[0] for m in additional_types])
 
         # Keep a set to ignore duplicates; Add initial additional types
         # resolved from the module imports.
@@ -361,16 +349,16 @@ class ModuleExtractor():
         """
         # Ignore types for which we cannot resolve the name for.
         # TODO: Maybe we can also handle edge cases here, if there are any remaining?
-        type_strings = set([m[1].__module__ + "." + m[0] for m in members if m[0] != None])
+        type_strings = set([m[1].__module__ + "." + m[0] for m in members])
         
         return type_strings
 
-extractor = ModuleExtractor()
-fname = "breaking.py"
+#extractor = ModuleExtractor()
+#fname = "breaking.py"
 
 #import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-types = extractor.get_types(fname)
-print(types)
+#types = extractor.get_types(fname)
+#print(types)
 #print(modules)
 #print(import_entries)
