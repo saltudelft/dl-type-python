@@ -13,7 +13,7 @@ from dltpy.preprocessing.extractor import ParseError, Function
 from dltpy.preprocessing.pipeline import extractor, read_file, preprocessor
 from typewriter.extraction import process_datapoints_TW, IdentifierSequence, TokenSequence, CommentSequence, \
     gen_aval_types_datapoints
-from typewriter.model import load_data_tensors_TW, EnhancedTWModel
+from typewriter.model import load_data_tensors_TW, EnhancedTWModel, make_batch_prediction_TW
 from typewriter.prepocessing import filter_functions, gen_argument_df_TW, encode_aval_types_TW
 from typewriter import config_TW
 from torch.utils.data import DataLoader, TensorDataset
@@ -25,10 +25,13 @@ import argparse
 import sys
 import os
 import re
+import pickle
 import pandas as pd
 import numpy as np
 import torch
 
+# Device configuration
+device = torch.device('cuda')
 pd.set_option('display.max_columns', 20)
 
 
@@ -118,6 +121,20 @@ def load_ret_data(vector_dir: str):
            load_data_tensors_TW(join(vector_dir, 'tokens_ret_datapoints_x.npy')), \
            load_data_tensors_TW(join(vector_dir, 'comments_ret_datapoints_x.npy')), \
            load_data_tensors_TW(join(vector_dir, 'ret__aval_types_dp.npy'))
+
+def evaluate_TW(model: torch.nn.Module, data_loader: DataLoader, top_n=1):
+
+    predicted_labels = torch.tensor([], dtype=torch.long).to(device)
+
+    for i, (batch_id, batch_tok, batch_cm, batch_type) in enumerate(data_loader):
+        _, batch_labels = make_batch_prediction_TW(model, batch_id.to(device), batch_tok.to(device),
+                                                   batch_cm.to(device), batch_type.to(device), top_n=top_n)
+
+        predicted_labels = torch.cat((predicted_labels, batch_labels), 0)
+
+    predicted_labels = predicted_labels.data.cpu().numpy()
+
+    return predicted_labels
 
 
 if __name__ == '__main__':
@@ -211,15 +228,28 @@ if __name__ == '__main__':
                                                                                     TEMP_DIR)
 
     print("Loading the pre-trained neural model of TypeWriter from the disk...")
-    tw_model = EnhancedTWModel(input_size=config_TW.W2V_VEC_LENGTH, hidden_size=128,
-                               aval_type_size=config_TW.AVAILABLE_TYPES_NUMBER, num_layers=1, output_size=1000,
-                               dropout_value=0.25)
-    tw_model.load_state_dict(torch.load(join(args.m, 'tw_pretrained_model.pt')))
-    print(tw_model.parameters())
+    # tw_model = EnhancedTWModel(input_size=config_TW.W2V_VEC_LENGTH, hidden_size=128,
+    #                            aval_type_size=config_TW.AVAILABLE_TYPES_NUMBER, num_layers=1, output_size=1000,
+    #                            dropout_value=0.25)
+    #tw_model.load_state_dict(torch.load(join(args.m, 'tw_pretrained_model.pt')))
 
-    #print("--------------------Argument Types Prediction--------------------")
-    #id_params, tok_params, com_params, aval_params = load_param_data(TEMP_DIR)
-    #train_loader = DataLoader(TensorDataset(id_params, tok_params, com_params, aval_params))
+    tw_model = torch.load(join(args.m, 'tw_pretrained_model.pt'))
+    label_encoder = pickle.load(open(join(args.m, 'label_encoder.pkl'), 'rb'))
 
+    print("The total number of the mode's parameters:", sum(p.numel() for p in tw_model.parameters()))
 
+    print("--------------------Argument Types Prediction--------------------")
+    id_params, tok_params, com_params, aval_params = load_param_data(TEMP_DIR)
+    params_data_loader = DataLoader(TensorDataset(id_params, tok_params, com_params, aval_params))
 
+    params_pred = label_encoder.inverse_transform([p[0] for p in evaluate_TW(tw_model, params_data_loader)])
+    for i, p in enumerate(params_pred):
+        print(f"{ext_funcs_df_params['func_name'].iloc[i]}: {ext_funcs_df_params['arg_name'].iloc[i]} -> {p}")
+
+    print("--------------------Return Types Prediction--------------------")
+    id_ret, tok_ret, com_ret, aval_ret = load_ret_data(TEMP_DIR)
+    ret_data_loader = DataLoader(TensorDataset(id_ret, tok_ret, com_ret, aval_ret))
+
+    ret_pred = label_encoder.inverse_transform([p[0] for p in evaluate_TW(tw_model, ret_data_loader)])
+    for i, p in enumerate(ret_pred):
+        print(f"{ext_funcs_df_ret['name'].iloc[i]} -> {p}")
