@@ -13,7 +13,10 @@ from dltpy.preprocessing.extractor import ParseError, Function
 from dltpy.preprocessing.pipeline import extractor, read_file, preprocessor
 from typewriter.extraction import process_datapoints_TW, IdentifierSequence, TokenSequence, CommentSequence, \
     gen_aval_types_datapoints
+from typewriter.model import load_data_tensors_TW, EnhancedTWModel
 from typewriter.prepocessing import filter_functions, gen_argument_df_TW, encode_aval_types_TW
+from typewriter import config_TW
+from torch.utils.data import DataLoader, TensorDataset
 from gensim.models import Word2Vec
 from ast import literal_eval
 from typing import List
@@ -24,6 +27,7 @@ import os
 import re
 import pandas as pd
 import numpy as np
+import torch
 
 pd.set_option('display.max_columns', 20)
 
@@ -92,6 +96,29 @@ def filter_ret_funcs(ext_funcs_df: pd.DataFrame):
     return ext_funcs_df
 
 
+def load_param_data(vector_dir: str):
+    """
+    Loads the sequences of parameters from the disk
+    :param vector_dir:
+    :return:
+    """
+    return load_data_tensors_TW(join(vector_dir, 'identifiers_params_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'tokens_params_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'comments_params_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'params__aval_types_dp.npy'))
+
+
+def load_ret_data(vector_dir: str):
+    """
+    Loads the sequences of return types from the disk
+    :param vector_dir:
+    :return:
+    """
+    return load_data_tensors_TW(join(vector_dir, 'identifiers_ret_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'tokens_ret_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'comments_ret_datapoints_x.npy')), \
+           load_data_tensors_TW(join(vector_dir, 'ret__aval_types_dp.npy'))
+
 
 if __name__ == '__main__':
 
@@ -119,7 +146,6 @@ if __name__ == '__main__':
     ext_funcs_df = filter_functions(ext_funcs_df)
 
     ext_funcs_df_params = gen_argument_df_TW(ext_funcs_df)
-
 
     print("Number of extracted arguments: ", ext_funcs_df_params['arg_name'].count())
 
@@ -166,9 +192,6 @@ if __name__ == '__main__':
     dp_ids_ret = process_datapoints_TW(join(TEMP_DIR, "ext_funcs_ret.csv"), TEMP_DIR, 'identifiers_', 'ret',
                                        id_trans_func_ret)
 
-    print(dp_ids_params.shape)
-    print(dp_ids_ret.shape)
-
     print("Generating tokens sequences")
     dp_tokens_params = process_datapoints_TW(join(TEMP_DIR, "ext_funcs_params.csv"), TEMP_DIR, 'tokens_', 'params',
                                              token_trans_func_param)
@@ -186,3 +209,17 @@ if __name__ == '__main__':
                                                                                     join(TEMP_DIR, "ext_funcs_ret.csv"),
                                                                                     '',
                                                                                     TEMP_DIR)
+
+    print("Loading the pre-trained neural model of TypeWriter from the disk...")
+    tw_model = EnhancedTWModel(input_size=config_TW.W2V_VEC_LENGTH, hidden_size=128,
+                               aval_type_size=config_TW.AVAILABLE_TYPES_NUMBER, num_layers=1, output_size=1000,
+                               dropout_value=0.25)
+    tw_model.load_state_dict(torch.load(join(args.m, 'tw_pretrained_model.pt')))
+    print(tw_model.parameters())
+
+    #print("--------------------Argument Types Prediction--------------------")
+    #id_params, tok_params, com_params, aval_params = load_param_data(TEMP_DIR)
+    #train_loader = DataLoader(TensorDataset(id_params, tok_params, com_params, aval_params))
+
+
+
