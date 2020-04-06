@@ -66,8 +66,11 @@ class ModuleExtractor():
             file_queue = Queue()
             checked_files = set()
 
-            # Add root file that we are analyzing
-            file_queue.put(os.path.abspath(file))
+            # Add root file that we are analyzing; We use abspath to convert the potentially
+            # relative path to an absolute one.
+            root_file = os.path.abspath(file)
+            file_queue.put(root_file)
+            checked_files.add(root_file)
 
             # Final import statements to return
             import_statements = []
@@ -75,13 +78,6 @@ class ModuleExtractor():
             # Iterate while queue is not empty (we will break in loop when needed)
             while not file_queue.empty():
                 current_file = file_queue.get()
-
-                # Skip if we already checked this file
-                if (current_file in checked_files):
-                    continue
-                
-                # Mark file as 'visited'
-                checked_files.add(current_file)
 
                 # Get import statements for current file
                 current_imports = self.get_file_import_statements(current_file)
@@ -110,9 +106,11 @@ class ModuleExtractor():
                         except:
                             continue
                     
-                    # Add file for further analysis if needed.
-                    if (add_path and stmt.source is not None):
-                        file_queue.put(stmt.source)
+                    # Add file for further analysis if marked as such, if the statement source is resolved,
+                    # and if the current file is not visited.
+                    if (add_path and stmt.source is not None and stmt.source not in checked_files):
+                        file_queue.put(stmt.source)    # Add file to BFS queue
+                        checked_files.add(stmt.source) # Mark file as 'visited'
 
             # Return final import statements list
             return import_statements
