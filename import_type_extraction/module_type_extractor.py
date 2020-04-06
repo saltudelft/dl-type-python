@@ -80,6 +80,7 @@ class ModuleExtractor():
                 if (current_file in checked_files):
                     continue
                 
+                # Mark file as 'visited'
                 checked_files.add(current_file)
 
                 # Get import statements for current file
