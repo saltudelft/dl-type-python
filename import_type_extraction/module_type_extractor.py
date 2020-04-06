@@ -1,13 +1,12 @@
 from importlab import environment, fs, graph, import_finder, output, parsepy, resolve, utils
 from argparse import Namespace
-import importlib.util
 
 import argparse
 import sys, inspect, os
-import importlib
 
 from functools import reduce
 from typing import NewType
+from queue import Queue
 
 
 class ModuleExtractor():
@@ -61,46 +60,104 @@ class ModuleExtractor():
 
         # TODO: Make the try-catch less generic.
         try:
-            # Create environment & arguments used for creating graph
-            default_version = '%d.%d' % sys.version_info[:2]
-            args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
-            env = environment.create_from_args(args)
+            # Create queue to perform BFS; This will hold file paths
+            # We also create a set of files that we already checked so that we do not
+            # re-visit the same file more than once.
+            file_queue = Queue()
+            checked_files = set()
 
-            # Create import graph
-            importGraph = graph.ImportGraph.create(env, args.inputs, True)
+            # Add root file that we are analyzing
+            file_queue.put(os.path.abspath(file))
 
-            # Prints unresolved imports
-            #print(importGraph.get_all_unresolved())
-            
-            # Get a topologicgally sorted list of files
-            import_statements = importGraph.sorted_source_files()
+            # Final import statements to return
+            import_statements = []
 
-            # Since the sorted source files returns a list of lists, we concatenate them
-            # to form a coherent list of paths.
-            import_statements = reduce(lambda a,b: a + b, import_statements)
-            
-            # Finally, we want to get the import statements for each of the dependency files.
-            # We do this by reducing the list of paths to first get the imports for that file,
-            # and then we concatenate each of the import statement lists together to finally form
-            # a coherent list of import statements.
+            # Iterate while queue is not empty (we will break in loop when needed)
+            while not file_queue.empty():
+                current_file = file_queue.get()
 
-            # Helper function to combine two paths (or one list of ImportStatements and one path)
-            # to a coherent list of ImportStatements
-            def reduce_paths(p1, p2):
-                p2_statements = self.get_file_import_statements(p2)
+                # Skip if we already checked this file
+                if (current_file in checked_files):
+                    continue
                 
-                # Combine previous import statements with path 2 import statements
-                return p1 + p2_statements
+                checked_files.add(current_file)
 
+                # Get import statements for current file
+                current_imports = self.get_file_import_statements(current_file)
 
-            # Convert first import statement to file import statements so that
-            # the reduce operation below works as expected.
-            if (len(import_statements) > 0):
-                import_statements[0] = self.get_file_import_statements(import_statements[0])
+                # Add all current import statements to final result
+                import_statements += current_imports
 
-            import_statements = reduce(reduce_paths, import_statements)
+                for stmt in current_imports:
+                    # Get base name of import (the import name before the final dot)
+                    base_name = self.get_file_base_name(stmt.name)
 
+                    # Keep track whether we should add this file for recursive analysis
+                    # of imports. If the base name of the import is equal to the import name,
+                    # this means that we imported a full module, and should indeed process it.
+                    # Otherwise, we resolve this to False.
+                    add_path = base_name == stmt.name
+
+                    if (not add_path):
+                        try:
+                            # Resolve base import (without the import portion after the last dot)
+                            base_import = import_finder.resolve_import(base_name, False, False)
+
+                            # Paths un-equal; this means we imported a module.
+                            # As such, we should analyze this file recursively.
+                            add_path = base_import.path != stmt.source
+                        except:
+                            continue
+                    
+                    # Add file for further analysis if needed.
+                    if (add_path and stmt.source is not None):
+                        file_queue.put(stmt.source)
+
+            # Return final import statements list
             return import_statements
+
+            # ImportLab graph approach; Issue with this is that the graph built
+            # does not distinguish from imports, so we have to do it manually.
+            # Create environment & arguments used for creating graph
+            # default_version = '%d.%d' % sys.version_info[:2]
+            # args = Namespace(inputs=[file], python_version=default_version, pythonpath='')
+            # env = environment.create_from_args(args)
+
+            # # Create import graph
+            # importGraph = graph.ImportGraph.create(env, args.inputs, True)
+
+            # # Prints unresolved imports
+            # #print(importGraph.get_all_unresolved())
+            
+            # # Get a topologicgally sorted list of files
+            # import_statements = importGraph.sorted_source_files()
+
+            # # Since the sorted source files returns a list of lists, we concatenate them
+            # # to form a coherent list of paths.
+            # import_statements = reduce(lambda a,b: a + b, import_statements)
+            
+            # # Finally, we want to get the import statements for each of the dependency files.
+            # # We do this by reducing the list of paths to first get the imports for that file,
+            # # and then we concatenate each of the import statement lists together to finally form
+            # # a coherent list of import statements.
+
+            # # Helper function to combine two paths (or one list of ImportStatements and one path)
+            # # to a coherent list of ImportStatements
+            # def reduce_paths(p1, p2):
+            #     p2_statements = self.get_file_import_statements(p2)
+                
+            #     # Combine previous import statements with path 2 import statements
+            #     return p1 + p2_statements
+
+
+            # # Convert first import statement to file import statements so that
+            # # the reduce operation below works as expected.
+            # if (len(import_statements) > 0):
+            #     import_statements[0] = self.get_file_import_statements(import_statements[0])
+
+            # import_statements = reduce(reduce_paths, import_statements)
+
+            # return import_statements
         except:
             return []
 
@@ -375,6 +432,7 @@ fname = "module_test.py"
 #import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
 types = extractor.get_types(fname)
+
 print(types)
 #print(modules)
 #print(import_entries)
