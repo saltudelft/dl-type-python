@@ -142,6 +142,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="A script for doing type inference using TypeWriter approach")
     parser.add_argument("--s", required=True, type=str, help="A Python source for inference")
     parser.add_argument("--m", required=True, type=str, help="Path to the pre-defined model of TypeWriter")
+    parser.add_argument("--t", required=False, default=3, type=int, help="Top n predictions")
     args = parser.parse_args()
     # TODO: Check if model's folder exists
 
@@ -180,11 +181,7 @@ if __name__ == '__main__':
 
     print("Encodes available types hints...")
     df_avl_types = pd.read_csv(join(args.m, "top_999_types.csv"))
-
     ext_funcs_df_params, ext_funcs_df_ret = encode_aval_types_TW(ext_funcs_df_params, ext_funcs_df_ret, df_avl_types)
-
-    print(ext_funcs_df_params.head(10))
-    print(ext_funcs_df_ret.head(10))
 
     ext_funcs_df_params.to_csv(join(TEMP_DIR, "ext_funcs_params.csv"), index=False)
     ext_funcs_df_ret.to_csv(join(TEMP_DIR, "ext_funcs_ret.csv"), index=False)
@@ -242,14 +239,16 @@ if __name__ == '__main__':
     id_params, tok_params, com_params, aval_params = load_param_data(TEMP_DIR)
     params_data_loader = DataLoader(TensorDataset(id_params, tok_params, com_params, aval_params))
 
-    params_pred = label_encoder.inverse_transform([p[0] for p in evaluate_TW(tw_model, params_data_loader)])
+    params_pred = [p for p in evaluate_TW(tw_model, params_data_loader, top_n=args.t)]
     for i, p in enumerate(params_pred):
+        p = ' '.join(["%d. %s" % (j, t) for j, t in enumerate(label_encoder.inverse_transform(p), start=1)])
         print(f"{ext_funcs_df_params['func_name'].iloc[i]}: {ext_funcs_df_params['arg_name'].iloc[i]} -> {p}")
 
     print("--------------------Return Types Prediction--------------------")
     id_ret, tok_ret, com_ret, aval_ret = load_ret_data(TEMP_DIR)
     ret_data_loader = DataLoader(TensorDataset(id_ret, tok_ret, com_ret, aval_ret))
 
-    ret_pred = label_encoder.inverse_transform([p[0] for p in evaluate_TW(tw_model, ret_data_loader)])
+    ret_pred = [p for p in evaluate_TW(tw_model, ret_data_loader, top_n=args.t)]
     for i, p in enumerate(ret_pred):
+        p = ' '.join(["%d. %s" % (j, t) for j, t in enumerate(label_encoder.inverse_transform(p), start=1)])
         print(f"{ext_funcs_df_ret['name'].iloc[i]} -> {p}")
