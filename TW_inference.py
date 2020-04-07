@@ -140,7 +140,7 @@ def evaluate_TW(model: torch.nn.Module, data_loader: DataLoader, top_n=1):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="A script for doing type inference using TypeWriter approach")
-    parser.add_argument("--s", required=True, type=str, help="A Python source for inference")
+    parser.add_argument("--s", required=True, type=str, help="A Python source file for inference")
     parser.add_argument("--m", required=True, type=str, help="Path to the pre-defined model of TypeWriter")
     args = parser.parse_args()
     # TODO: Check if model's folder exists
