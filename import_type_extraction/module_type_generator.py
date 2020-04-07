@@ -66,10 +66,7 @@ class ModuleGenerator():
         
         for filename in file_list:
             # Get import types & add to dictionary
-            types = self.type_extractor.get_types(filename)
-            
-            # Filter out builtin types
-            extracted_types[filename] = [t for t in types if not t.startswith('builtins.')]
+            extracted_types[filename] = self.type_extractor.get_types(filename)
 
         # Add entry for 'files' in project to contain dicts of filename and types
         project['files'] = [{'filename': filename, 'types': extracted_types[filename] }

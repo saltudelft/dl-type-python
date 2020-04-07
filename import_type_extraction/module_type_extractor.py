@@ -365,9 +365,11 @@ class ModuleExtractor():
         # is a class, or it is a typing type (or a derivation).
         # Alternatively, the attribute has the attribute supertype, it means that the attribute has
         # been created using the NewType annotation.
+        # Moreover, we ignore data descriptors (e.g. properties) as they are not type definitions.
         # TODO: This could possibly use major improvements; One concern is that this might break in newer Python versions.
         try:
-            return hasattr(member, "__subclasscheck__") or hasattr(member, "__supertype__")
+            return (hasattr(member, "__subclasscheck__") or hasattr(member, "__supertype__")) \
+                    and not inspect.isdatadescriptor(member)
         except:
             # There are cases where hasattr results in passing the call around, which ultimately might
             # result in a crash. Thus, we must be mindful of catching an exception, and returning False
