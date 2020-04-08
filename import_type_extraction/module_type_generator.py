@@ -158,7 +158,7 @@ class ModuleGenerator():
 
         return list_string.strip(']["\'').split(', ')
 
-    def concatenate_dataframes(self, out_dir: str, prefix_filters = []) -> None:
+    def concatenate_dataframes(self, out_dir: str, filename: str, prefix_filters = []) -> None:
         """
         Concatenates the CSV files present in the 'output_dir' location,
         and saves them to a single CSV file.
@@ -175,4 +175,4 @@ class ModuleGenerator():
         # Filter types with specified prefix filters
         df['types'] = df['types'].apply(lambda t : self.filter_types(self.string_to_list(t), prefix_filters))
 
-        df.to_csv(out_dir, index=False)
+        df.to_csv(os.path.join(out_dir, filename), index=False)
