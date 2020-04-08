@@ -61,12 +61,12 @@ class ModuleGenerator():
         # Get files recursively from project directory
         file_list = list_files(filtered_project_directory)
         
-        # Store extracted types as ddictionary {'filename' -> [type_list]}
+        # Store extracted types as dictionary {'filename' -> [type_list]}
         extracted_types = {}
         
         for filename in file_list:
             # Get import types & add to dictionary
-            extracted_types[filename] = self.type_extractor.get_types(filename)
+            extracted_types[filename] = list(self.type_extractor.get_types(filename))
 
         # Add entry for 'files' in project to contain dicts of filename and types
         project['files'] = [{'filename': filename, 'types': extracted_types[filename] }
@@ -74,19 +74,6 @@ class ModuleGenerator():
         
         # Write the project as a CSV file
         self.write_project(project)
-
-        # This can be replaced by the utility method in gh_query.py
-        #         if extracted_avl_types:
-        #             with open(os.path.join(self.avl_types_dir, f'{project["author"]}_{project["repo"]}_avltypes.txt'), 'w') as f:
-        #                 for t in extracted_avl_types:
-        #                     f.write("%s\n" % t)
-        #     except KeyboardInterrupt:
-        #         quit(1)
-        #     except Exception:
-        #         print(f'Running pipeline for project {i} failed')
-        #         traceback.print_exc()
-        #     finally:
-        #         self.write_project(project)
 
     def get_project_filename(self, project) -> str:
         """
@@ -126,13 +113,59 @@ class ModuleGenerator():
         type_df = pd.DataFrame(import_types, columns=columns)
         type_df.to_csv(self.get_project_filename(project), index=False)
 
-    def concatenate_dataframes(self, out_dir: str) -> None:
+
+    def filter_type(self, type_string: str, prefixes: list) -> bool:
+        """
+        Filters the specified type string with the given list of prefixes.
+        Returns false if the type string should be filtered out, and true
+        otherwise (if it should be kept)
+
+        :param: type_string  String representation of a type
+        :param: prefixes     List of prefixes (as strings) to omit
+        :return: True if type should be kept, False if it should be filtered out
+        """
+
+        for prefix in prefixes:
+            if (type_string.startswith(prefix)):
+                return False
+        
+        return True
+
+    def filter_types(self, types: list, prefixes: list) -> list:
+        """
+        Filters the specified list of types with the given list of prefixes.
+        Omits all types from types list that start with any string in prefixes.
+
+        :param: types   List of type strings (as list of strings)
+        :param: prefixes List of prefixes to use for filtering types out
+        """
+
+        return [t.strip('\'"') for t in types if self.filter_type(t.strip('\'"'), prefixes)]
+
+    def string_to_list(self, list_string: str) -> list:
+        """
+        Converts a Python string representation of a list into a Python list of strings.
+
+        :param: list_string  String representation of a list
+        :return: List of strings
+        """
+
+        return list_string.strip(']["\'').split(', ')
+
+    def concatenate_dataframes(self, out_dir: str, prefix_filters = []) -> None:
         """
         Concatenates the CSV files present in the 'output_dir' location,
         and saves them to a single CSV file.
 
         :param: out_dir  Location to output CSV to (including filename)
+        :param: prefix_filters - List of prefixes to filter out for resulting types in final CSV.
         """
+        # TODO: Add filtering here
+
         DATA_FILES = list_files(self.output_dir)
         df = parse_df(DATA_FILES, batch_size=128)
+
+        # Filter types with specified prefix filters
+        df['types'] = df['types'].apply(lambda t : self.filter_types(self.string_to_list(t), prefix_filters))
+
         df.to_csv(out_dir, index=False)
