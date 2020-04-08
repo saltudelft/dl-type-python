@@ -113,6 +113,10 @@ class ModuleGenerator():
         type_df = pd.DataFrame(import_types, columns=columns)
         type_df.to_csv(self.get_project_filename(project), index=False)
 
+        # Delete dataframe after writing to CSV to eventually let the garbage collector
+        # free memory.
+        del type_df
+
 
     def filter_type(self, type_string: str, prefixes: list) -> bool:
         """
