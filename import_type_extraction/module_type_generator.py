@@ -28,7 +28,9 @@ class ModuleGenerator():
         :param: jobs       Number of jobs to use
         :param: start      Starting index for ID
         """
- 
+        # Create missing dirs if needed
+        os.makedirs(self.output_dir, exist_ok=True)
+
         ParallelExecutor(n_jobs=jobs, batch_size=batch_size)(total=len(repos_list))(
             delayed(self.process_project_for_import)(i, project) for i, project in enumerate(repos_list, start=start))
 
@@ -164,7 +166,8 @@ class ModuleGenerator():
         :param: out_dir  Location to output CSV to (including filename)
         :param: prefix_filters - List of prefixes to filter out for resulting types in final CSV.
         """
-        # TODO: Add filtering here
+        # Create missing dirs if needed
+        os.makedirs(out_dir, exist_ok=True)
 
         DATA_FILES = list_files(self.output_dir)
         df = parse_df(DATA_FILES, batch_size=128)
