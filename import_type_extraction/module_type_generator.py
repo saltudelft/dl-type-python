@@ -18,7 +18,7 @@ class ModuleGenerator():
         self.output_dir = output_dir
         self.type_extractor = ModuleExtractor()
 
-    def process_repos_for_types(self, repos_list, jobs, start=0):
+    def process_repos_for_types(self, repos_list, jobs, batch_size, start=0):
         """
         Processes the specified list of repositories for import types, by extracting the import
         types for each project, and saving the corresponding CSV files.
@@ -29,7 +29,7 @@ class ModuleGenerator():
         :param: start      Starting index for ID
         """
  
-        ParallelExecutor(n_jobs=jobs)(total=len(repos_list))(
+        ParallelExecutor(n_jobs=jobs, batch_size=batch_size)(total=len(repos_list))(
             delayed(self.process_project_for_import)(i, project) for i, project in enumerate(repos_list, start=start))
 
     def process_project_for_import(self, i, project):
