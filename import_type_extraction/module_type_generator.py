@@ -69,7 +69,7 @@ class ModuleGenerator():
         for filename in file_list:
             # Get import types & add to dictionary
             type_set = self.type_extractor.get_types(filename)
-            extracted_types[filename] = list(self.type_extractor.get_types(filename))
+            extracted_types[filename] = list(type_set)
 
             # Determine whether the types should be extracted from the file.
             # Generally, if the file imports anything related to unittest, we consider it
