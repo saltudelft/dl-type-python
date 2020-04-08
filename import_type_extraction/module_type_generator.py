@@ -58,7 +58,7 @@ class ModuleGenerator():
         filtered_project_directory = project_filter.filter_directory(os.path.join(self.repos_dir, project["author"],
                                                                                 project["repo"]))
         
-        print(f'Extracting import typesfor {project_id}...')
+        print(f'Extracting import types for {project_id}...')
         
         # Get files recursively from project directory
         file_list = list_files(filtered_project_directory)
@@ -68,7 +68,20 @@ class ModuleGenerator():
         
         for filename in file_list:
             # Get import types & add to dictionary
+            type_set = self.type_extractor.get_types(filename)
             extracted_types[filename] = list(self.type_extractor.get_types(filename))
+
+            # Determine whether the types should be extracted from the file.
+            # Generally, if the file imports anything related to unittest, we consider it
+            # to be a test file, and hence should not proceed with extracting visible types,
+            # as it may skew the results.
+            # extract_types_from_file = not any(t.startswith("unittest") for t in type_set)
+
+            # if (extract_types_from_file):
+                # extracted_types[filename] = list(self.type_extractor.get_types(filename))
+            #else:
+                # Set to empty list
+                # extracted_types[filename] = []
 
         # Add entry for 'files' in project to contain dicts of filename and types
         project['files'] = [{'filename': filename, 'types': extracted_types[filename] }
