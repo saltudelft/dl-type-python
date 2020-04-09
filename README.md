@@ -48,10 +48,12 @@ To run all the steps of TypeWriter manually with explanation, check out the note
 By employing the pre-trained neural model of TypeWriter, you can infer both argument and return types of the methods of a given Python source file using the following script:
 
 ```
-python TW_inference.py --s $SRC_FILE --m $TW_MODEL_PATH
+python TW_inference.py --s $SRC_FILE --m $TW_MODEL_PATH --t $TOP_K
 ```
 
 `$SRC_FILE`: A Python source file.
 
 `$TW_MODEL_PATH`: The path to the TypeWriter's pre-trained model and auxiliary files.
+
+`$TOP_K`: Top K predictions (the default value of K is 3)
 
