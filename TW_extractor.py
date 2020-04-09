@@ -48,10 +48,11 @@ if __name__ == '__main__':
     DATASET_DIR = args.d
 
     SELECTED_PROJECTS_DIR = './data/selected_py_projects.json'
-    OUTPUT_EMBEDDINGS_DIRECTORY = join(OUTPUT_DIR, 'embed')
+    #OUTPUT_EMBEDDINGS_DIRECTORY = join(OUTPUT_DIR, 'embed')
     OUTPUT_DIRECTORY_TW = join(OUTPUT_DIR, 'funcs')
     AVAILABLE_TYPES_DIR = join(OUTPUT_DIR, 'avl_types')
     RESULTS_DIR = join(OUTPUT_DIR, "results")
+    TW_MODEL_FILES = join(OUTPUT_DIR, "tw_model_files")
 
     ML_INPUTS_PATH_TW = join(OUTPUT_DIR, "ml_inputs")
     ML_RETURN_DF_PATH_TW = join(ML_INPUTS_PATH_TW, "_ml_return.csv")
@@ -65,16 +66,16 @@ if __name__ == '__main__':
     VECTOR_OUTPUT_TRAIN = join(VECTOR_OUTPUT_DIR_TW, "train")
     VECTOR_OUTPUT_TEST = join(VECTOR_OUTPUT_DIR_TW, "test")
 
-    W2V_MODEL_TOKEN_DIR = join(OUTPUT_EMBEDDINGS_DIRECTORY, 'w2v_token_model.bin')
-    W2V_MODEL_COMMENTS_DIR = join(OUTPUT_EMBEDDINGS_DIRECTORY, 'w2v_comments_model.bin')
+    W2V_MODEL_TOKEN_DIR = join(TW_MODEL_FILES, 'w2v_token_model.bin')
+    W2V_MODEL_COMMENTS_DIR = join(TW_MODEL_FILES, 'w2v_comments_model.bin')
 
     DATA_FILE_TW = join(ML_INPUTS_PATH_TW, "_all_data.csv")
 
-    LABEL_ENCODER_PATH_TW = join(ML_INPUTS_PATH_TW, "label_encoder.pkl")
+    LABEL_ENCODER_PATH_TW = join(TW_MODEL_FILES, "label_encoder.pkl")
     TYPES_FILE_TW = join(ML_INPUTS_PATH_TW, "_most_frequent_types.csv")
 
-    dirs = [OUTPUT_EMBEDDINGS_DIRECTORY, OUTPUT_DIRECTORY_TW, AVAILABLE_TYPES_DIR, RESULTS_DIR,
-            ML_INPUTS_PATH_TW, VECTOR_OUTPUT_DIR_TW, VECTOR_OUTPUT_TRAIN, VECTOR_OUTPUT_TEST]
+    dirs = [OUTPUT_DIRECTORY_TW, AVAILABLE_TYPES_DIR, RESULTS_DIR, TW_MODEL_FILES, ML_INPUTS_PATH_TW,
+            VECTOR_OUTPUT_DIR_TW, VECTOR_OUTPUT_TRAIN, VECTOR_OUTPUT_TEST]
 
     if not isdir(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
@@ -165,7 +166,7 @@ if __name__ == '__main__':
     if CACHE_TW and exists(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1))):
         df_types = pd.read_csv(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1)))
     else:
-        df_types = gen_most_frequent_avl_types(AVAILABLE_TYPES_DIR, AVAILABLE_TYPES_NUMBER - 1, True)
+        df_types = gen_most_frequent_avl_types(TW_MODEL_FILES, AVAILABLE_TYPES_NUMBER - 1, True)
 
     df_params, df = encode_aval_types_TW(df_params, df, df_types)
 
