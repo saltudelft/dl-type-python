@@ -144,6 +144,10 @@ class ModuleGenerator():
         :return: True if type should be kept, False if it should be filtered out
         """
 
+        # Check for empty string (can be obtained after trimming quotes)
+        if (len(type_string) == 0):
+            return False
+
         for prefix in prefixes:
             if (type_string.startswith(prefix)):
                 return False
@@ -185,7 +189,25 @@ class ModuleGenerator():
         DATA_FILES = list_files(self.output_dir)
         df = parse_df(DATA_FILES, batch_size=128)
 
+        # Filter dataframe
+        df = self.filter_dataframe(df, prefix_filters)
+
+        # Write dataframe to CSV
+        df.to_csv(os.path.join(out_dir, filename), index=False)
+
+    def filter_dataframe(self, df: pd.DataFrame, prefix_filters = []):
+        """
+        Filters a dataframe encoding visible types with the specified prefix filters,
+        and with additional criteria (filters out files ending in the _test.py suffix)
+
+        :param: df  Dataframe to filter
+        :param: prefix_filters List of prefixes to filter ouit for resulting types
+        :return: filtered dataframe
+        """
         # Filter types with specified prefix filters
         df['types'] = df['types'].apply(lambda t : self.filter_types(self.string_to_list(t), prefix_filters))
 
-        df.to_csv(os.path.join(out_dir, filename), index=False)
+        # Filter dataframe from files that have a *_test.py extension
+        df = df[~df['file'].str.endswith('_test.py')]
+
+        return df
