@@ -67,24 +67,17 @@ class ModuleGenerator():
         extracted_types = {}
         
         for filename in file_list:
-            # Get import types & add to dictionary
-            type_set = self.type_extractor.get_types(filename)
-            extracted_types[filename] = list(type_set)
+            # Get import members & add to dictionary
+            members = self.type_extractor.get_members(filename)
+            extracted_types[filename] = {}
 
-            # Determine whether the types should be extracted from the file.
-            # Generally, if the file imports anything related to unittest, we consider it
-            # to be a test file, and hence should not proceed with extracting visible types,
-            # as it may skew the results.
-            # extract_types_from_file = not any(t.startswith("unittest") for t in type_set)
+            for m in members:
+                extracted_types[filename][m] = list(members[m])
 
-            # if (extract_types_from_file):
-                # extracted_types[filename] = list(self.type_extractor.get_types(filename))
-            #else:
-                # Set to empty list
-                # extracted_types[filename] = []
-
-        # Add entry for 'files' in project to contain dicts of filename and types
-        project['files'] = [{'filename': filename, 'types': extracted_types[filename] }
+        # Add entry for 'files' in project to contain dicts of filename, types and functions
+        project['files'] = [{'filename': filename, \
+                             'types': extracted_types[filename]['types'], \
+                             'functions': extracted_types[filename]['functions']}
                         for filename in file_list]
         
         # Write the project as a CSV file
@@ -96,19 +89,19 @@ class ModuleGenerator():
         :param project: the project dict
         :return: return filename
         """
-        return os.path.join(self.output_dir, f"{project['author']}{project['repo']}-import-types.csv")
+        return os.path.join(self.output_dir, f"{project['author']}{project['repo']}-import-members.csv")
         
     def write_project(self, project) -> None:
         """
         Writes the project to a CSV file.
         Assumes the project already has a 'files' field which contains
-        nested dictionary entries of {'filename', 'types'} for each file.
+        nested dictionary entries of {'filename', 'types', 'functions'} for each file.
         If there is no 'files' field, nothing is written; the project is simply skipped.
 
         :param: project  Project to write
         """
         import_types = []
-        columns = ['author', 'repo', 'file', 'types']
+        columns = ['author', 'repo', 'file', 'types', 'functions']
 
         if 'files' in project:
             for file in project['files']:
@@ -116,7 +109,8 @@ class ModuleGenerator():
                     project['author'],
                     project['repo'],
                     file['filename'],
-                    file['types']
+                    file['types'],
+                    file['functions']
                 )
 
                 import_types.append(type_data)
