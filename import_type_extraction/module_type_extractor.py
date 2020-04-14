@@ -13,6 +13,7 @@ class ModuleExtractor():
     def __init__(self):
         pass
 
+
     def get_file_base_name(self, file):
         """
         Retrieves the name of the specified file, dropping the path information
@@ -29,6 +30,7 @@ class ModuleExtractor():
         base_name = base_name.split(".")[0]
 
         return base_name
+
 
     def get_imports(self, file):
         """
@@ -161,7 +163,6 @@ class ModuleExtractor():
             return []
 
 
-
     def get_module(self, import_name):
         """
         Resolves the specified import to a module/package, or returns None
@@ -204,9 +205,10 @@ class ModuleExtractor():
             # Resolving imports/finding package may fail in certain scenarios
             return None
 
-    def get_from_import_type(self, import_name, import_from):
+
+    def get_from_import_member(self, import_name, import_from):
         """
-        Checks whether the specified import_from substring refers to a type in
+        Checks whether the specified import from substring refers to a member in
         the fully qualified import name string.
         Returns the inspect member if that is the case, and None otherwise.
 
@@ -218,7 +220,6 @@ class ModuleExtractor():
         :param: import_from  From import portion of the full import name
         :return: member if import_from refers to type, None otherwise
         """
-
         # Get the length offset of the import_from name + 1 (to account for the dot before the new name)
         offset = len(import_from)+1
 
@@ -237,20 +238,14 @@ class ModuleExtractor():
             # If new_name is found as an attribute, that means it is a member (function, class, etc.)
             # in the module.
             if (module is not None and hasattr(module, import_from)):
-                attribute = getattr(module, import_from)
-                is_valid_type = self.is_type_member(attribute)
-
-                if (is_valid_type):
-                    # The name of the type is the 'from' portion of the
-                    # import (the last substring of the import right after
-                    # the final dot)
-                    return (import_from, attribute.__module__)
+                return getattr(module, import_from)
         except:
             # Checking for attribute in module might result in errors
             pass
 
-        # No 'additional' import type determined
+        # No 'additional' import member determined
         return None
+
 
     def resolve_modules(self, file):
         """
@@ -272,11 +267,13 @@ class ModuleExtractor():
         # Retrieve the imports for the provided file in the form of a list of ImportStatements.
         imports = self.get_imports(file)
 
-        # Keep track of the modules in the form (module_name, module_object)
-        modules = dict()
+        modules_dict = dict()
 
-        # Keep track of extra imported types that originate from the import from statements.
-        imported_types = set()
+        # Keep track of the modules in the form (module_name, module_object)
+        # Keep track of extra imported types & functions that originate from the import from statements.
+        modules_dict['modules'] = dict()
+        modules_dict['types'] = set()
+        modules_dict['functions'] = set()
 
         for import_entry in imports:
             name = import_entry.name
@@ -284,44 +281,59 @@ class ModuleExtractor():
 
             # Import successfully resolved to a module; We store this module in our created modules dictionary.
             if (module is not None):
-                modules[name] = module
+                modules_dict['modules'][name] = module
             else:
-                # Import not a module; Check whether the from import refers to a type.
-                # If it does, add it to the extra imported types set.
-                from_type = self.get_from_import_type(import_entry.name, import_entry.new_name)
+                # Import not a module; Check whether the from import refers to a member on it's own.
+                from_member = self.get_from_import_member(import_entry.name, import_entry.new_name)
 
-                if (from_type is not None):
-                    imported_types.add(from_type)
+                if (from_member is not None):
+                    # Retrieving __module__ might cause crashes in rare cases, so we wrap this in
+                    # a try-except block
+                    try:
+                        # Construct member tuple to add
+                        member_tuple = (import_entry.new_name, from_member.__module__)
 
-        # TODO: Return a special object/class instead of a tuple
-        return (modules, imported_types)
+                        # If the the member is either a type or function, we store it to
+                        # the additional dictionary
+                        if (self.is_type_member(from_member)):
+                            modules_dict['types'].add(member_tuple)
+                        elif (self.is_function_member(from_member)):
+                            modules_dict['functions'].add(member_tuple)
+                    except:
+                        # On error, ignore member
+                        pass
 
-    def get_types(self, file):
+        return modules_dict
+
+
+    def get_members(self, file):
         """
         Returns a set of types visible by the file.
 
         :param: file  File path to get visible types for
         :return: Set of types (provided as names) visible by the Python file.
         """
-        # Retrieve the resolved modules and additional types
-        modules, additional_types = self.resolve_modules(file)
+        # Retrieve the resolved modules and additional members
+        module_dict = self.resolve_modules(file)
 
-        # Construct fully qualified module strings from additional types
-        additional_type_set = set([m[1] + "." + m[0] for m in additional_types])
+        # Create dictionary with results
+        result_dict = dict()
 
-        # Keep a set to ignore duplicates; Add initial additional types
-        # resolved from the module imports.
-        types = set() | additional_type_set
+        # Initialize to additional members.
+        # Keep a set to ignore duplicates
+        result_dict['types'] = set([m[1] + "." + m[0] for m in module_dict['types']])
+        result_dict['functions'] = set([m[1] + "." + m[0] for m in module_dict['functions']])
 
-        for module_name in modules:
+        for module_name in module_dict['modules']:
             # Get the module from the dictionary, and extract the types from the module.
-            module = modules[module_name]
-            module_types = self.get_types_module(module)
+            module = module_dict['modules'][module_name]
 
-            # Merge the types set with the retrieved module types
-            types.update(module_types)
+            # Merge the member set with the retrieved module members for types & functios
+            result_dict['types'].update(self.get_members_module(module, self.is_type_member))
+            result_dict['functions'].update(self.get_members_module(module, self.is_function_member))
         
-        return types
+        return result_dict
+
 
     def get_file_import_statements(self, file):
         """
@@ -347,6 +359,7 @@ class ModuleExtractor():
             # above causes crashes.
             # TODO: Could we tailor to these cases as well somehow?
             return []
+
 
     def is_type_member(self, member):
         """
@@ -397,21 +410,41 @@ class ModuleExtractor():
         
         # return False
     
-    def get_types_module(self, module):
-        """
-        Returns the defined types in the specified module as a List of strings
 
-        :param: module  Module to retrieve types from
-        :return: List of types
+    def is_function_member(self, member):
+        """
+        Predicate function to filter a specified inspected member based on whether
+        it is a function or not. If the member is not a function, False is returned,
+        otherwise, True is returned.
+
+        :param: member  Member to check
+        :return: True if member is a function
         """
         try:
-            members = inspect.getmembers(module, predicate=self.is_type_member)
-            return self.get_types_from_members(members)
+            return inspect.isfunction(member)
+        except:
+            # In rare cases, inspecting directly might cause an exception on certain modules.
+            return False
+
+
+    def get_members_module(self, module, predicate):
+        """
+        Returns the defined members in the specified module as a List of strings, given
+        a certain predicate to filter out members.
+
+        :param: module  Module to retrieve members from
+        :param: predicate Predicate to use for returning members
+        :return: List of members
+        """
+        try:
+            members = inspect.getmembers(module, predicate=predicate)
+            return self.get_qualified_names_from_members(members)
         except:
             # In very rare cases, getmembers might crash due to using the hasattr/getattr method call.
             return []
 
-    def get_types_from_members(self, members):
+
+    def get_qualified_names_from_members(self, members):
         """
         Returns types from the specified members in the form of a set of strings.
         The types returned are qualified with their origin module name.
@@ -419,21 +452,21 @@ class ModuleExtractor():
         where name is a string, and member is an inspect member.
 
         :param: members  Container of member tuples in form (name, member)
-        :return: Set of (qualified) types as strings
+        :return: Set of (qualified) member names as strings
         """
         # Ignore types for which we cannot resolve the name for.
         # TODO: Maybe we can also handle edge cases here, if there are any remaining?
-        type_strings = set([m[1].__module__ + "." + m[0] for m in members])
+        member_strings = set([m[1].__module__ + "." + m[0] for m in members])
         
-        return type_strings
+        return member_strings
 
 extractor = ModuleExtractor()
 fname = "module_test.py"
 
 #import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-types = extractor.get_types(fname)
+members = extractor.get_members(fname)
 
-print(types)
+print(members)
 #print(modules)
 #print(import_entries)
