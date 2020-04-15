@@ -18,7 +18,7 @@ class ModuleGenerator():
         self.output_dir = output_dir
         self.type_extractor = ModuleExtractor()
 
-    def process_repos_for_types(self, repos_list, jobs, batch_size, start=0):
+    def process_repos_for_members(self, repos_list, jobs, batch_size, start=0):
         """
         Processes the specified list of repositories for import types, by extracting the import
         types for each project, and saving the corresponding CSV files.
@@ -127,37 +127,37 @@ class ModuleGenerator():
         del type_df
 
 
-    def filter_type(self, type_string: str, prefixes: list) -> bool:
+    def filter_member(self, member_string: str, prefixes: list) -> bool:
         """
-        Filters the specified type string with the given list of prefixes.
-        Returns false if the type string should be filtered out, and true
+        Filters the specified member string with the given list of prefixes.
+        Returns false if the member string should be filtered out, and true
         otherwise (if it should be kept)
 
-        :param: type_string  String representation of a type
+        :param: member_string  String representation of a member
         :param: prefixes     List of prefixes (as strings) to omit
-        :return: True if type should be kept, False if it should be filtered out
+        :return: True if member should be kept, False if it should be filtered out
         """
 
         # Check for empty string (can be obtained after trimming quotes)
-        if (len(type_string) == 0):
+        if (len(member_string) == 0):
             return False
 
         for prefix in prefixes:
-            if (type_string.startswith(prefix)):
+            if (member_string.startswith(prefix)):
                 return False
         
         return True
 
-    def filter_types(self, types: list, prefixes: list) -> list:
+    def filter_members(self, members: list, prefixes: list) -> list:
         """
-        Filters the specified list of types with the given list of prefixes.
-        Omits all types from types list that start with any string in prefixes.
+        Filters the specified list of members with the given list of prefixes.
+        Omits all members from members list that start with any string in prefixes.
 
-        :param: types   List of type strings (as list of strings)
-        :param: prefixes List of prefixes to use for filtering types out
+        :param: members   List of member strings (as list of strings)
+        :param: prefixes List of prefixes to use for filtering members out
         """
 
-        return [t.strip('\'"') for t in types if self.filter_type(t.strip('\'"'), prefixes)]
+        return [t.strip('\'"') for t in members if self.filter_member(t.strip('\'"'), prefixes)]
 
     def string_to_list(self, list_string: str) -> list:
         """
@@ -175,7 +175,7 @@ class ModuleGenerator():
         and saves them to a single CSV file.
 
         :param: out_dir  Location to output CSV to (including filename)
-        :param: prefix_filters - List of prefixes to filter out for resulting types in final CSV.
+        :param: prefix_filters - List of prefixes to filter out for resulting members in final CSV.
         """
         # Create missing dirs if needed
         os.makedirs(out_dir, exist_ok=True)
@@ -191,15 +191,16 @@ class ModuleGenerator():
 
     def filter_dataframe(self, df: pd.DataFrame, prefix_filters = []):
         """
-        Filters a dataframe encoding visible types with the specified prefix filters,
+        Filters a dataframe encoding visible members with the specified prefix filters,
         and with additional criteria (filters out files ending in the _test.py suffix)
 
         :param: df  Dataframe to filter
-        :param: prefix_filters List of prefixes to filter ouit for resulting types
+        :param: prefix_filters List of prefixes to filter ouit for resulting members
         :return: filtered dataframe
         """
-        # Filter types with specified prefix filters
-        df['types'] = df['types'].apply(lambda t : self.filter_types(self.string_to_list(t), prefix_filters))
+        # Filter members with specified prefix filters
+        df['types'] = df['types'].apply(lambda t : self.filter_members(self.string_to_list(t), prefix_filters))
+        df['functions'] = df['functions'].apply(lambda t : self.filter_members(self.string_to_list(t), prefix_filters))
 
         # Filter dataframe from files that have a *_test.py extension
         df = df[~df['file'].str.endswith('_test.py')]
