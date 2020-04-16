@@ -31,6 +31,17 @@ class ModuleExtractor():
 
         return base_name
 
+    def get_import_base_name(self, import_name):
+        # Get the length offset of the import name + 1 (to account for the dot before the new name)
+        offset = len(import_name)+1
+
+        # Import cannot be resolved, as new_name == name
+        if (len(import_name) < offset):
+            return import_name
+
+        # Remove the new_name from the name
+        return import_name[0:-offset]
+
 
     def get_imports(self, file):
         """
@@ -220,16 +231,14 @@ class ModuleExtractor():
         :param: import_from  From import portion of the full import name
         :return: member if import_from refers to type, None otherwise
         """
-        # Get the length offset of the import_from name + 1 (to account for the dot before the new name)
-        offset = len(import_from)+1
-
-        # Import cannot be resolved, as new_name == name
-        if (len(import_name) < offset):
-            return None
-
-        # Remove the new_name from the name
         # Attempt to resolve a module from the base name
-        base_name = import_name[0:-offset]
+        base_name = self.get_import_base_name(import_name)
+
+        # Same base name as import name; Return None, as we do not have a superset module.
+        if (base_name == import_name):
+            return None
+            
+        # Attempt to resolve a module from the base name
         module = self.get_module(base_name)
 
         try:
@@ -276,22 +285,29 @@ class ModuleExtractor():
         modules_dict['functions'] = set()
 
         for import_entry in imports:
-            name = import_entry.name
-            module = self.get_module(name)
+            import_name = import_entry.name
+            import_suffix = import_entry.new_name
+            module = self.get_module(import_name)
 
             # Import successfully resolved to a module; We store this module in our created modules dictionary.
             if (module is not None):
-                modules_dict['modules'][name] = module
+                modules_dict['modules'][import_name] = module
             else:
                 # Import not a module; Check whether the from import refers to a member on it's own.
-                from_member = self.get_from_import_member(import_entry.name, import_entry.new_name)
+                from_member = self.get_from_import_member(import_name, import_suffix)
 
                 if (from_member is not None):
                     # Retrieving __module__ might cause crashes in rare cases, so we wrap this in
                     # a try-except block
                     try:
+                        # If module cannot be resolved, fallbak to using import base name (which
+                        # is an inferior option, because it might not return a fully qualified path)
+                        module_name = from_member.__module__ \
+                                      if from_member.__module__ is not None \
+                                      else self.get_import_base_name(import_name)
+
                         # Construct member tuple to add
-                        member_tuple = (import_entry.new_name, from_member.__module__)
+                        member_tuple = (import_suffix, module_name)
 
                         # If the the member is either a type or function, we store it to
                         # the additional dictionary
@@ -463,10 +479,10 @@ class ModuleExtractor():
 extractor = ModuleExtractor()
 fname = "module_test.py"
 
-#import_entries = extractor.get_imports(fname)
+import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
-members = extractor.get_members(fname)
+#members = extractor.get_members(fname)
 
-print(members)
+#print(members)
 #print(modules)
-#print(import_entries)
+print(import_entries)
