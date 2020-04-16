@@ -53,6 +53,10 @@ class ModuleGenerator():
 
         # TODO: Caching check could be added here
         
+        if (os.path.exists(self.get_project_filename(project))):
+            print('Skipping... (already exists)')
+            return
+
         # Get directory
         print(f'Filtering for {project_id}...')
         filtered_project_directory = project_filter.filter_directory(os.path.join(self.repos_dir, project["author"],
