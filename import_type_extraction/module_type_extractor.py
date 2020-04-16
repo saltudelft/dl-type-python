@@ -476,13 +476,13 @@ class ModuleExtractor():
         
         return member_strings
 
-extractor = ModuleExtractor()
-fname = "module_test.py"
+#extractor = ModuleExtractor()
+#fname = "module_test.py"
 
-import_entries = extractor.get_imports(fname)
+#import_entries = extractor.get_imports(fname)
 #modules = extractor.resolve_modules(fname)
 #members = extractor.get_members(fname)
 
 #print(members)
 #print(modules)
-print(import_entries)
+#print(import_entries)
