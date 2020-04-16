@@ -72,7 +72,11 @@ class ModuleGenerator():
         
         for filename in file_list:
             # Get import members & add to dictionary
-            members = self.type_extractor.get_members(filename)
+            try:
+                members = self.type_extractor.get_members(filename)
+            except:
+                continue
+            
             extracted_types[filename] = {}
 
             for m in members:
