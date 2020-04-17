@@ -91,7 +91,7 @@ class ModuleGenerator():
         # Create missing dirs if needed
         os.makedirs(self.output_dir, exist_ok=True)
 
-        ParallelExecutor(n_jobs=jobs, batch_size=batch_size)(total=len(repos_list))(
+        ParallelExecutor(n_jobs=jobs, batch_size=batch_size, verbose=100)(total=len(repos_list))(
             delayed(self.process_project_for_import)(i, project) for i, project in enumerate(repos_list, start=start))
 
     def process_project_for_import(self, i, project, chunk_size=8):
