@@ -135,6 +135,10 @@ class ModuleGenerator():
         
         # Get files recursively from project directory
         file_list = list_files(filtered_project_directory)
+
+        if (len(file_list) == 0):
+            print("Skipped... (no files for project)")
+            return
         
         # Create new chunk writer to perform chunked writes
         chunk_writer = self.ChunkWriter(project_filename_temp, chunk_size, self.columns)
