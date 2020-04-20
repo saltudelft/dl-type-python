@@ -23,6 +23,8 @@ from typewriter.extraction import IdentifierSequence, TokenSequence, CommentSequ
 from typewriter.extraction import EmbeddingTypeWriter
 from typewriter.config_TW import create_dirs, AVAILABLE_TYPES_NUMBER
 from gensim.models import Word2Vec
+from ast import literal_eval
+from collections import Counter
 import argparse
 import os
 import pandas as pd
@@ -39,6 +41,7 @@ if __name__ == '__main__':
     parser.add_argument("--d", required=True, type=str, help="Path to the Python repositories")
     parser.add_argument("--c", required=False, default=1, type=int, help="Use cached processed files if available. Use 1 for cache, otherwise 0")
     parser.add_argument("--w", required=False, default=4, type=int, help="Number of workers for extracting functions")
+    parser.add_argument("--t", required=False, default=None, type=str, help="Path to the file of the visible types")
     args = parser.parse_args()
 
     CACHE_TW = True if args.c == 1 else False
@@ -161,12 +164,27 @@ if __name__ == '__main__':
     df['arg_names_str'] = df['arg_names'].apply(lambda l: " ".join([v for v in l if v != 'self']))
     df['return_expr_str'] = df['return_expr'].apply(lambda l: " ".join([re.sub(r"self\.?", '', v) for v in l]))
     df = df.drop(columns=['author', 'repo', 'has_type', 'arg_names', 'arg_types', 'arg_descrs', 'return_expr'])
+    
+    def ext_avl_types():
+        print("Extracting available type hints...")
+        if CACHE_TW and exists(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1))):
+            return pd.read_csv(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1)))
+        else:
+            return gen_most_frequent_avl_types(AVAILABLE_TYPES_DIR, TW_MODEL_FILES, AVAILABLE_TYPES_NUMBER - 1, True)
 
-    print("Extracting available type hints...")
-    if CACHE_TW and exists(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1))):
-        df_types = pd.read_csv(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1)))
+    df_types = None
+    if args.t is None:
+        df_types = ext_avl_types()        
     else:
-        df_types = gen_most_frequent_avl_types(TW_MODEL_FILES, AVAILABLE_TYPES_NUMBER - 1, True)
+        if exists(args.t):
+            print("Extracting available types from an external file...")
+            df_types = pd.read_csv(args.t)
+            df_types = [t for type_list in df_types['types'].tolist() for t in literal_eval(type_list)]
+            df_types = pd.DataFrame.from_records(Counter(df_types).most_common(AVAILABLE_TYPES_NUMBER-1),
+                                                 columns=['Types', 'Count'])
+            df_types.to_csv(join(TW_MODEL_FILES, "top_%d_types.csv" % (AVAILABLE_TYPES_NUMBER-1)), index=False)
+        else:
+            df_types = ext_avl_types()
 
     df_params, df = encode_aval_types_TW(df_params, df, df_types)
 
