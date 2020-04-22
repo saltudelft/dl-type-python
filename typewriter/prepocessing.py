@@ -88,7 +88,7 @@ def filter_return_dp(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def gen_most_frequent_avl_types(avl_types_dir, top_n: int = 1000, save_on_disk=False):
+def gen_most_frequent_avl_types(avl_types_dir, output_dir, top_n: int = 1000, save_on_disk=False):
     """
     It generates top n most frequent available types
     :param top_n:
@@ -101,7 +101,6 @@ def gen_most_frequent_avl_types(avl_types_dir, top_n: int = 1000, save_on_disk=F
     all_aval_types = []
 
     for f in aval_types_files:
-
         with open(f, 'r') as f_aval_type:
             all_aval_types = all_aval_types + f_aval_type.read().splitlines()
 
@@ -110,7 +109,7 @@ def gen_most_frequent_avl_types(avl_types_dir, top_n: int = 1000, save_on_disk=F
     df = pd.DataFrame.from_records(counter.most_common(top_n), columns=['Types', 'Count'])
 
     if save_on_disk:
-        df.to_csv(join(avl_types_dir, "top_%d_types.csv" % top_n), index=False)
+        df.to_csv(join(output_dir, "top_%d_types.csv", index=False))
 
     return df
 
@@ -125,9 +124,15 @@ def encode_aval_types_TW(df_param: pd.DataFrame, df_ret: pd.DataFrame, df_aval_t
 
     types = df_aval_types['Types'].tolist()
 
+    def trans_aval_type(x):
+        for i, t in enumerate(types):
+            if x in t:
+                return i
+        return len(types)
+
     # If the arg type doesn't exist in top_n available types, we insert n + 1 into the vector as it represents the other type.
-    df_param['param_aval_enc'] = df_param['arg_type'].apply(lambda x: types.index(x) if x in types else len(types))
-    df_ret['ret_aval_enc'] = df_ret['return_type'].apply(lambda x: types.index(x) if x in types else len(types))
+    df_param['param_aval_enc'] = df_param['arg_type'].apply(trans_aval_type)
+    df_ret['ret_aval_enc'] = df_ret['return_type'].apply(trans_aval_type)
 
     return df_param, df_ret
 

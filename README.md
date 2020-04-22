@@ -39,6 +39,21 @@ python TW_model.py --o $OUTPUT_FOLDER
 
 To change the hyper-parameters of the neural model, you can change the values in the file `data/tw_model_learning_params.json`.
 
+It should be noted that both Extractor and Model scripts save the required files for running the inference script in `$OUTPUT_FOLDER/tw_model_files`.
+
 ### Notebook
 To run all the steps of TypeWriter manually with explanation, check out the notebook `main_TW.ipynb`.
+
+### Inference 
+By employing the pre-trained neural model of TypeWriter, you can infer both argument and return types of the methods of a given Python source file using the following script:
+
+```
+python TW_inference.py --s $SRC_FILE --m $TW_MODEL_PATH --t $TOP_K
+```
+
+`$SRC_FILE`: A Python source file.
+
+`$TW_MODEL_PATH`: The path to the TypeWriter's pre-trained model and auxiliary files.
+
+`$TOP_K`: Top K predictions (the default value of K is 3)
 

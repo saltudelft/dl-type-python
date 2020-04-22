@@ -8,7 +8,7 @@ from gh_query import load_json
 from typewriter.config_TW import W2V_VEC_LENGTH, AVAILABLE_TYPES_NUMBER
 from typewriter.model import load_data_tensors_TW, load_label_tensors_TW, EnhancedTWModel, train_loop_TW, evaluate_TW, \
     report_TW
-from os.path import join
+from os.path import join, abspath
 from torch.utils.data import DataLoader, TensorDataset
 from statistics import mean
 import argparse
@@ -31,12 +31,13 @@ if __name__ == '__main__':
     OUTPUT_DIR = args.o
     RESULTS_DIR = join(OUTPUT_DIR, "results")
     ML_INPUTS_PATH_TW = join(OUTPUT_DIR, "ml_inputs")
+    TW_MODEL_FILES = join(OUTPUT_DIR, "tw_model_files")
 
     VECTOR_OUTPUT_DIR_TW = join(OUTPUT_DIR, 'vectors')
     VECTOR_OUTPUT_TRAIN = join(VECTOR_OUTPUT_DIR_TW, "train")
     VECTOR_OUTPUT_TEST = join(VECTOR_OUTPUT_DIR_TW, "test")
 
-    LABEL_ENCODER_PATH_TW = join(ML_INPUTS_PATH_TW, "label_encoder.pkl")
+    LABEL_ENCODER_PATH_TW = join(TW_MODEL_FILES, "label_encoder.pkl")
     #################################################################################################################
 
     # Helper functions for loading data vectors #######################################################################
@@ -123,15 +124,6 @@ if __name__ == '__main__':
     data_loader_workers = learn_params['data_loader_workers']
     #################################################################################################################
 
-    # learning_dict = {'hidden_size': hidden_size, 'output_size': output_size, 'num_layers': num_layers,
-    #                  'learning_rate': learning_rate, 'dropout_rate': dropout_rate, 'epochs': epochs,
-    #                  'top_n_pred': top_n_pred, 'n_rep': n_rep, 'batch_size': batch_size,
-    #                  'data_loader_workers': data_loader_workers}
-
-    # import json
-    # with open("./data/tw_model_learning_params.json", "w") as f:
-    #     json.dump(learning_dict, f, indent=4)
-
     # Training the model ############################################################################################
     model = EnhancedTWModel(input_size, hidden_size, AVAILABLE_TYPES_NUMBER, num_layers, output_size,
                             dropout_rate).to(device)
@@ -185,4 +177,9 @@ if __name__ == '__main__':
         print(f"-------------- Prediction results for {p} --------------")
         for t, r in res.items():
             print(f"{t}: F1-score: {format(r['f1-score'] * 100, '.2f')} - Recall: {format(r['recall'] * 100, '.2f')} - Precision: {format(r['precision'] * 100, '.2f')}")
+    ##################################################################################################################
+
+    # Saving the model ###############################################################################################
+    torch.save(model.module, join(TW_MODEL_FILES, 'tw_pretrained_model.pt'))
+    print("Saved the neural model of TyperWriter at:\n%s" % abspath(join(TW_MODEL_FILES, 'tw_pretrained_model.pt')))
     ##################################################################################################################
