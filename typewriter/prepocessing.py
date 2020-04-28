@@ -109,7 +109,7 @@ def gen_most_frequent_avl_types(avl_types_dir, output_dir, top_n: int = 1000, sa
     df = pd.DataFrame.from_records(counter.most_common(top_n), columns=['Types', 'Count'])
 
     if save_on_disk:
-        df.to_csv(join(output_dir, "top_%d_types.csv", index=False))
+        df.to_csv(join(output_dir, "top_%d_types.csv" % top_n), index=False)
 
     return df
 
