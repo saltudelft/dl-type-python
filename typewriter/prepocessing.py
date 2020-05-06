@@ -136,4 +136,15 @@ def encode_aval_types_TW(df_param: pd.DataFrame, df_ret: pd.DataFrame, df_aval_t
 
     return df_param, df_ret
 
+def make_types_consistent(df_all: pd.DataFrame) -> pd.DataFrame:
+    """
+    Removes typing module from type annotations
+    """
+    
+    df_all['return_type'] = df_all['return_type'].apply(lambda x: str(x).replace("typing.", "") if x else x)
+    df_all['arg_types'] = df_all['arg_types'].apply(lambda x: str([t.replace("typing.", "") \
+                                                       if t else t for t in literal_eval(x)]))
+    
+    return df_all
+
 
