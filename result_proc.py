@@ -55,16 +55,17 @@ def autolabel(rects, ax):
                     ha='center', va='bottom', fontsize="small")
 
 
-def eval_result(result_path, model_name, dataset='combined', filter="unfiltered", macro_avg=True):
+def eval_result(result_path, model_name, date_time, dataset='combined', filter="unfiltered", macro_avg=True):
 
     res_files = [f for f in listdir(result_path) if isfile(join(result_path, f))]
-    res_files = [f for f in res_files if model_name in f and dataset == splitext(f)[0].split("_")[1] and filter == splitext(f)[0].split("_")[4]]
+    res_files = [f for f in res_files if model_name in f and dataset == splitext(f)[0].split("_")[1] and
+                 filter == splitext(f)[0].split("_")[4] and date_time == splitext(f)[0].split("_")[5]+"_" +splitext(f)[0].split("_")[6]]
     #top_n = {"Top-%s" % r.split("_")[4]:[] for r in res_files}
     top_n = {}
     avg_type = 'macro avg' if macro_avg else 'weighted avg' 
 
     for r in res_files:
-        res = load_json(join(result_path, r))[avg_type]
+        res = load_json(join(result_path, r))['result'][avg_type]
         if "Top-%s" % r.split("_")[3] in top_n:
             top_n["Top-%s" % r.split("_")[3]]['recall'].append(res['recall'])
             top_n["Top-%s" % r.split("_")[3]]['precision'].append(res['precision'])

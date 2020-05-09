@@ -101,141 +101,145 @@ if __name__ == '__main__':
     print("Number of selected Python projects:", len(repos))
     ##################################################################################################################
 
-    # Extracting functions ###########################################################################################
+    if not (exists(ML_PARAM_TW_TRAIN) and exists(ML_PARAM_TW_TEST) and exists(ML_RET_TW_TRAIN) and exists(ML_RET_TW_TEST)) or not CACHE_TW: 
+        # Extracting functions ###########################################################################################
 
-    if not CACHE_TW and len(list_files(OUTPUT_DIRECTORY_TW)) == 0:
-        p = Pipeline(DATASET_DIR, OUTPUT_DIRECTORY_TW, AVAILABLE_TYPES_DIR)
-        p.run_pipeline_manual(repos, args.w)
+        if not CACHE_TW and len(list_files(OUTPUT_DIRECTORY_TW)) == 0:
+            p = Pipeline(DATASET_DIR, OUTPUT_DIRECTORY_TW, AVAILABLE_TYPES_DIR)
+            p.run_pipeline_manual(repos, args.w)
 
-    if CACHE_TW and exists(DATA_FILE_TW):
-        print("Loading cached copy of the extracted functions: ", DATA_FILE_TW)
-        df = pd.read_csv(DATA_FILE_TW)
-    else:
-        DATA_FILES = list_files(OUTPUT_DIRECTORY_TW)
-        print("Found %d processed projects" % len(DATA_FILES))
-        # print(DATA_FILES)
-        df = parse_df(DATA_FILES, batch_size=128)
-        print("Writing all the extracted functions in a CSV file: ", DATA_FILE_TW)
-        df.to_csv(DATA_FILE_TW, index=False)
-
-    print("Number of source files: ", len(df.file.unique()))
-    print("Number of functions: ", len(df.name))
-
-    print("Number of functions with comments: ",
-          df[(~df['return_descr'].isnull()) | (~df['func_descr'].isnull())].shape[0])
-    print("Number of functions with return types: ", df['return_type'].count())
-    print("Number of functions with both: ",
-          df[((~df['return_descr'].isnull()) | (~df['func_descr'].isnull())) & (~df['return_type'].isnull())].shape[0])
-
-    # Splits the extracted functions into train and test sets by files
-    train_files, test_files = train_test_split(pd.DataFrame(df['file'].unique(), columns=['file']), test_size=0.2)
-
-    df_train = df[df['file'].isin(train_files.to_numpy().flatten())]
-    df_test = df[df['file'].isin(test_files.to_numpy().flatten())]
-
-    print("Number of functions in train set: ", df_train.shape[0])
-    print("Number of functions in test set: ", df_test.shape[0])
-
-    ##################################################################################################################
-
-    # Processing the extracted functions #############################################################################
-
-    df = filter_functions(df)
-
-    # Processing parameters types
-    df_params = gen_argument_df_TW(df)
-
-    args_count = df_params['arg_name'].count()
-    args_with_annot = df_params[df_params['arg_type'] != ''].shape[0]
-    df_params = df_params[(df_params['arg_name'] != 'self') & ((df_params['arg_type'] != 'Any') & \
-                                                               (df_params['arg_type'] != 'None'))]
-
-    print("Number of arguments: ", args_count)
-    print("Args with type annotations: ", args_with_annot)
-    print("Ignored trivial types: ", (args_count - df_params.shape[0]))
-
-    df_params = df_params[df_params['arg_type'] != '']
-    print("Number of arguments with types: ", df_params.shape[0])
-
-    # Processing return types
-    df = filter_return_dp(df)
-    df = format_df(df)
-
-    df['arg_names_str'] = df['arg_names'].apply(lambda l: " ".join([v for v in l if v != 'self']))
-    df['return_expr_str'] = df['return_expr'].apply(lambda l: " ".join([re.sub(r"self\.?", '', v) for v in l]))
-    df = df.drop(columns=['author', 'repo', 'has_type', 'arg_names', 'arg_types', 'arg_descrs', 'return_expr'])
-    
-    def ext_avl_types():
-        print("Extracting available type hints...")
-        if CACHE_TW and exists(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1))):
-            return pd.read_csv(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1)))
+        if CACHE_TW and exists(DATA_FILE_TW):
+            print("Loading cached copy of the extracted functions: ", DATA_FILE_TW)
+            df = pd.read_csv(DATA_FILE_TW)
         else:
-            return gen_most_frequent_avl_types(AVAILABLE_TYPES_DIR, TW_MODEL_FILES, AVAILABLE_TYPES_NUMBER - 1, True)
+            DATA_FILES = list_files(OUTPUT_DIRECTORY_TW)
+            print("Found %d processed projects" % len(DATA_FILES))
+            # print(DATA_FILES)
+            df = parse_df(DATA_FILES, batch_size=128)
+            print("Writing all the extracted functions in a CSV file: ", DATA_FILE_TW)
+            df.to_csv(DATA_FILE_TW, index=False)
 
-    df_types = None
-    if args.t is None:
-        df_types = ext_avl_types()        
-    else:
-        if exists(args.t):
-            print("Extracting available types from an external file...")
-            df_types = pd.read_csv(args.t)
-            df_types = [t for type_list in df_types['types'].tolist() for t in literal_eval(type_list)]
-            df_types = pd.DataFrame.from_records(Counter(df_types).most_common(AVAILABLE_TYPES_NUMBER-1),
-                                                 columns=['Types', 'Count'])
-            df_types.to_csv(join(TW_MODEL_FILES, "top_%d_types.csv" % (AVAILABLE_TYPES_NUMBER-1)), index=False)
+        print("Number of source files: ", len(df.file.unique()))
+        print("Number of functions: ", len(df.name))
+
+        print("Number of functions with comments: ",
+            df[(~df['return_descr'].isnull()) | (~df['func_descr'].isnull())].shape[0])
+        print("Number of functions with return types: ", df['return_type'].count())
+        print("Number of functions with both: ",
+            df[((~df['return_descr'].isnull()) | (~df['func_descr'].isnull())) & (~df['return_type'].isnull())].shape[0])
+
+        # Splits the extracted functions into train and test sets by files
+        train_files, test_files = train_test_split(pd.DataFrame(df['file'].unique(), columns=['file']), test_size=0.2)
+
+        df_train = df[df['file'].isin(train_files.to_numpy().flatten())]
+        df_test = df[df['file'].isin(test_files.to_numpy().flatten())]
+
+        print("Number of functions in train set: ", df_train.shape[0])
+        print("Number of functions in test set: ", df_test.shape[0])
+
+        ##################################################################################################################
+
+        # Processing the extracted functions #############################################################################
+
+        df = filter_functions(df)
+
+        # Processing parameters types
+        df_params = gen_argument_df_TW(df)
+
+        args_count = df_params['arg_name'].count()
+        args_with_annot = df_params[df_params['arg_type'] != ''].shape[0]
+        df_params = df_params[(df_params['arg_name'] != 'self') & ((df_params['arg_type'] != 'Any') & \
+                                                                (df_params['arg_type'] != 'None'))]
+
+        print("Number of arguments: ", args_count)
+        print("Args with type annotations: ", args_with_annot)
+        print("Ignored trivial types: ", (args_count - df_params.shape[0]))
+
+        df_params = df_params[df_params['arg_type'] != '']
+        print("Number of arguments with types: ", df_params.shape[0])
+
+        # Processing return types
+        df = filter_return_dp(df)
+        df = format_df(df)
+
+        df['arg_names_str'] = df['arg_names'].apply(lambda l: " ".join([v for v in l if v != 'self']))
+        df['return_expr_str'] = df['return_expr'].apply(lambda l: " ".join([re.sub(r"self\.?", '', v) for v in l]))
+        df = df.drop(columns=['author', 'repo', 'has_type', 'arg_names', 'arg_types', 'arg_descrs', 'return_expr'])
+        
+        def ext_avl_types():
+            print("Extracting available type hints...")
+            if CACHE_TW and exists(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1))):
+                return pd.read_csv(join(AVAILABLE_TYPES_DIR, 'top_%d_types.csv' % (AVAILABLE_TYPES_NUMBER - 1)))
+            else:
+                return gen_most_frequent_avl_types(AVAILABLE_TYPES_DIR, TW_MODEL_FILES, AVAILABLE_TYPES_NUMBER - 1, True)
+
+        df_types = None
+        if args.t is None:
+            df_types = ext_avl_types()        
         else:
-            df_types = ext_avl_types()
+            if exists(args.t):
+                print("Extracting available types from an external file...")
+                df_types = pd.read_csv(args.t)
+                df_types = [t for type_list in df_types['types'].tolist() for t in literal_eval(type_list)]
+                df_types = pd.DataFrame.from_records(Counter(df_types).most_common(AVAILABLE_TYPES_NUMBER-1),
+                                                    columns=['Types', 'Count'])
+                df_types.to_csv(join(TW_MODEL_FILES, "top_%d_types.csv" % (AVAILABLE_TYPES_NUMBER-1)), index=False)
+            else:
+                df_types = ext_avl_types()
 
-    df_params, df = encode_aval_types_TW(df_params, df, df_types)
+        df_params, df = encode_aval_types_TW(df_params, df, df_types)
 
-    # Labels of types
-    df, df_params, label_encoder, uniq_types = encode_types(df, df_params, TYPES_FILE_TW)
+        # Labels of types
+        df, df_params, label_encoder, uniq_types = encode_types(df, df_params, TYPES_FILE_TW)
 
-    all_enc_types = np.concatenate((df_params['arg_type_enc'].values, df['return_type_enc'].values))
-    other_type_count = np.count_nonzero(all_enc_types == label_encoder.transform(['other'])[0])
-    print("Number of datapoints with other types: ", other_type_count)
-    print("The percentage of covered unique types: %.2f%%" % ((AVAILABLE_TYPES_NUMBER / len(uniq_types)) * 100))
-    print("The percentage of all datapoints covered by considered types: %.2f%%" % \
-          ((1 - other_type_count / all_enc_types.shape[0]) * 100))
+        all_enc_types = np.concatenate((df_params['arg_type_enc'].values, df['return_type_enc'].values))
+        other_type_count = np.count_nonzero(all_enc_types == label_encoder.transform(['other'])[0])
+        print("Number of datapoints with other types: ", other_type_count)
+        print("The percentage of covered unique types: %.2f%%" % ((AVAILABLE_TYPES_NUMBER / len(uniq_types)) * 100))
+        print("The percentage of all datapoints covered by considered types: %.2f%%" % \
+            ((1 - other_type_count / all_enc_types.shape[0]) * 100))
 
-    with open(LABEL_ENCODER_PATH_TW, 'wb') as file:
-        pickle.dump(label_encoder, file)
+        with open(LABEL_ENCODER_PATH_TW, 'wb') as file:
+            pickle.dump(label_encoder, file)
 
-    df.to_csv(ML_RETURN_DF_PATH_TW, index=False)
-    df_params.to_csv(ML_PARAM_DF_PATH_TW, index=False)
+        df.to_csv(ML_RETURN_DF_PATH_TW, index=False)
+        df_params.to_csv(ML_PARAM_DF_PATH_TW, index=False)
 
-    # Splits parameters and return types into train and test
-    df_params_train = df_params[df_params['file'].isin(train_files.to_numpy().flatten())]
-    df_params_test = df_params[df_params['file'].isin(test_files.to_numpy().flatten())]
+        # Splits parameters and return types into train and test
+        df_params_train = df_params[df_params['file'].isin(train_files.to_numpy().flatten())]
+        df_params_test = df_params[df_params['file'].isin(test_files.to_numpy().flatten())]
 
-    df_ret_train = df[df['file'].isin(train_files.to_numpy().flatten())]
-    df_ret_test = df[df['file'].isin(test_files.to_numpy().flatten())]
+        df_ret_train = df[df['file'].isin(train_files.to_numpy().flatten())]
+        df_ret_test = df[df['file'].isin(test_files.to_numpy().flatten())]
 
-    print("Number of parameters types in train set: ", df_params_train.shape[0])
-    print("Number of parameters types in test set: ", df_params_test.shape[0])
-    print("Number of return types in train set: ", df_ret_train.shape[0])
-    print("Number of return types in test set: ", df_ret_test.shape[0])
+        print("Number of parameters types in train set: ", df_params_train.shape[0])
+        print("Number of parameters types in test set: ", df_params_test.shape[0])
+        print("Number of return types in train set: ", df_ret_train.shape[0])
+        print("Number of return types in test set: ", df_ret_test.shape[0])
 
-    df_params_train.to_csv(ML_PARAM_TW_TRAIN, index=False)
-    df_params_test.to_csv(ML_PARAM_TW_TEST, index=False)
-    df_ret_train.to_csv(ML_RET_TW_TRAIN, index=False)
-    df_ret_test.to_csv(ML_RET_TW_TEST, index=False)
-    ##################################################################################################################
+        df_params_train.to_csv(ML_PARAM_TW_TRAIN, index=False)
+        df_params_test.to_csv(ML_PARAM_TW_TEST, index=False)
+        df_ret_train.to_csv(ML_RET_TW_TRAIN, index=False)
+        df_ret_test.to_csv(ML_RET_TW_TEST, index=False)
+        ##################################################################################################################
 
     # Training embeddings ############################################################################################
 
-    param_df = pd.read_csv(ML_PARAM_TW_TRAIN)
-    return_df = pd.read_csv(ML_RET_TW_TRAIN)
+    if not (exists(W2V_MODEL_TOKEN_DIR) and exists(W2V_MODEL_COMMENTS_DIR)) or not CACHE_TW:
+    
+        param_df = pd.read_csv(ML_PARAM_TW_TRAIN)
+        return_df = pd.read_csv(ML_RET_TW_TRAIN)
 
-    print("Number of parameters types:", param_df.shape[0])
-    print("Number of returns types", return_df.shape[0])
+        print("Number of parameters types:", param_df.shape[0])
+        print("Number of returns types", return_df.shape[0])
 
-    embedder = EmbeddingTypeWriter(param_df, return_df, W2V_MODEL_COMMENTS_DIR, W2V_MODEL_TOKEN_DIR)
+        embedder = EmbeddingTypeWriter(param_df, return_df, W2V_MODEL_COMMENTS_DIR, W2V_MODEL_TOKEN_DIR)
 
-    print("Trains embeddings for code tokens and comments....")
-    embedder.train_token_model()
-    embedder.train_comment_model()
+        print("Trains embeddings for code tokens and comments....")
+        embedder.train_token_model()
+        embedder.train_comment_model()
 
+    print("Loading pre-trained embeddings...")
     w2v_token_model = Word2Vec.load(W2V_MODEL_TOKEN_DIR)
     w2v_comments_model = Word2Vec.load(W2V_MODEL_COMMENTS_DIR)
 
