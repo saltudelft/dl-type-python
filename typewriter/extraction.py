@@ -93,13 +93,13 @@ class CommentIterator(HelperIterator):
 
     def __iter__(self):
 
-        for func_descr_sentence in self.return_df['func_descr']:
+        for func_descr_sentence in self.return_df['func_descr'][~self.return_df['func_descr'].isnull()]:
             yield func_descr_sentence.split()
 
-        for return_descr_sentence in self.return_df['return_descr']:
+        for return_descr_sentence in self.return_df['return_descr'][~self.return_df['return_descr'].isnull()]:
             yield return_descr_sentence.split()
 
-        for param_descr_sentence in self.param_df['arg_comment']:
+        for param_descr_sentence in self.param_df['arg_comment'][~self.param_df['arg_comment'].isnull()]:
             yield param_descr_sentence.split()
 
 
@@ -110,16 +110,16 @@ class TokenIterator(HelperIterator):
         self.return_df = return_df
 
     def __iter__(self):
-        for return_expr_sentences in self.return_df['return_expr_str']:
+        for return_expr_sentences in self.return_df['return_expr_str'][~self.return_df['return_expr_str'].isnull()]:
             yield return_expr_sentences.split()
 
-        for code_occur_sentences in self.param_df['arg_occur']:
+        for code_occur_sentences in self.param_df['arg_occur'][~self.param_df['arg_occur'].isnull()]:
             yield code_occur_sentences.split()
 
-        for func_name_sentences in self.param_df['func_name']:
+        for func_name_sentences in self.param_df['func_name'][~self.param_df['func_name'].isnull()]:
             yield func_name_sentences.split()
 
-        for arg_names_sentences in self.return_df['arg_names_str']:
+        for arg_names_sentences in self.return_df['arg_names_str'][~self.return_df['arg_names_str'].isnull()]:
             yield arg_names_sentences.split()
 
 ######################################################################################################################
