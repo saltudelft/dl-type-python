@@ -11,6 +11,7 @@ from typewriter.model import load_data_tensors_TW, load_label_tensors_TW, Enhanc
 from os.path import join, abspath
 from torch.utils.data import DataLoader, TensorDataset
 from statistics import mean
+from datetime import datetime
 import argparse
 import torch
 import pickle
@@ -122,6 +123,8 @@ if __name__ == '__main__':
     batch_size = learn_params['batch_size']
     #train_split_size = 0.8
     data_loader_workers = learn_params['data_loader_workers']
+    params_dict = {'epochs': epochs, 'lr': learning_rate, 'dr': dropout_rate,
+                   'batches': batch_size, 'layers': num_layers, 'hidden_size': hidden_size}
     #################################################################################################################
 
     # Training the model ############################################################################################
@@ -129,10 +132,10 @@ if __name__ == '__main__':
                             dropout_rate).to(device)
 
     # TODO: for now, only one GPU
-    model = torch.nn.DataParallel(model, device_ids=[0])
+    model = torch.nn.DataParallel(model) #, device_ids=[0])
 
     idx_of_other = pickle.load(open(LABEL_ENCODER_PATH_TW, 'rb')).transform(['other'])[0]
-
+    res_time = datetime.now().strftime("%b%d_%H-%M-%S")
     for d in datasets_train:
         print(f"Loading {d} data for model {model.module.__class__.__name__}")
         # X_id, X_tok, X_cm, X_type, Y = datasets[d]
@@ -162,9 +165,9 @@ if __name__ == '__main__':
             f1_score_top_n = []
             for top_n in top_n_pred:
                 filename = f"{model.module.__class__.__name__}_{d}_{i}_{top_n}"
-                report_TW(y_true, y_pred, top_n, f"{filename}_unfiltered", RESULTS_DIR)
-                report = report_TW(y_true[idx], y_pred[idx], top_n, f"{filename}_filtered", RESULTS_DIR)
-                f1_score_top_n.append(report['macro avg']['f1-score'])
+                report_TW(y_true, y_pred, top_n, f"{filename}_unfiltered_{res_time}", RESULTS_DIR, params_dict)
+                report = report_TW(y_true[idx], y_pred[idx], top_n, f"{filename}_filtered_{res_time}", RESULTS_DIR, params_dict)
+                f1_score_top_n.append(report['result']['macro avg']['f1-score'])
             print("Mean f1_score:", mean(f1_score_top_n))
 
             model.module.reset_model_parameters()
@@ -173,7 +176,7 @@ if __name__ == '__main__':
     # Prediction Results ############################################################################################
     for p in datasets_train.keys():
 
-        res = result_proc.eval_result(RESULTS_DIR, 'EnhancedTWModel', p, 'filtered', True)
+        res = result_proc.eval_result(RESULTS_DIR, 'EnhancedTWModel', res_time, p, 'filtered', True)
         print(f"-------------- Prediction results for {p} --------------")
         for t, r in res.items():
             print(f"{t}: F1-score: {format(r['f1-score'] * 100, '.2f')} - Recall: {format(r['recall'] * 100, '.2f')} - Precision: {format(r['precision'] * 100, '.2f')}")
