@@ -261,21 +261,21 @@ if __name__ == '__main__':
 
     print("[Parameters] Generating Identifiers sequences")
     dp_ids_param_X_train = process_datapoints_TW(ML_PARAM_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'identifiers_', 'param_train',
-                                                 id_trans_func_param)
+                                                 id_trans_func_param, CACHE_TW)
     dp_ids_param_X_test = process_datapoints_TW(ML_PARAM_TW_TEST, VECTOR_OUTPUT_TEST, 'identifiers_', 'param_test',
-                                                id_trans_func_param)
+                                                id_trans_func_param, CACHE_TW)
 
     print("[Parameters] Generating Tokens sequences")
     dp_tokens_param_X_train = process_datapoints_TW(ML_PARAM_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'tokens_', 'param_train',
-                                                    token_trans_func_param)
+                                                    token_trans_func_param, CACHE_TW)
     dp_tokens_param_X_test = process_datapoints_TW(ML_PARAM_TW_TEST, VECTOR_OUTPUT_TEST, 'tokens_', 'param_test',
-                                                   token_trans_func_param)
+                                                   token_trans_func_param, CACHE_TW)
 
     print("[Parameters] Generating Comments sequences")
     dp_cms_param_X_train = process_datapoints_TW(ML_PARAM_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'comments_', 'param_train',
-                                                 cm_trans_func_param)
+                                                 cm_trans_func_param, CACHE_TW)
     dp_cms_param_X_test = process_datapoints_TW(ML_PARAM_TW_TEST, VECTOR_OUTPUT_TEST, 'comments_', 'param_test',
-                                                cm_trans_func_param)
+                                                cm_trans_func_param, CACHE_TW)
 
     # Returns types
     id_trans_func_ret = lambda row: IdentifierSequence(w2v_token_model, None, row.arg_names_str, row.name)
@@ -284,32 +284,34 @@ if __name__ == '__main__':
 
     print("[Returns] Generating Identifiers sequences")
     dp_ids_ret_X_train = process_datapoints_TW(ML_RET_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'identifiers_', 'ret_train',
-                                               id_trans_func_ret)
+                                               id_trans_func_ret, CACHE_TW)
     dp_ids_ret_X_test = process_datapoints_TW(ML_RET_TW_TEST, VECTOR_OUTPUT_TEST, 'identifiers_', 'ret_test',
-                                              id_trans_func_ret)
+                                              id_trans_func_ret, CACHE_TW)
 
     print("[Returns] Generating Tokens sequences")
     dp_tokens_ret_X_train = process_datapoints_TW(ML_RET_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'tokens_', 'ret_train',
-                                                  token_trans_func_ret)
+                                                  token_trans_func_ret, CACHE_TW)
     dp_tokens_ret_X_test = process_datapoints_TW(ML_RET_TW_TEST, VECTOR_OUTPUT_TEST, 'tokens_', 'ret_test',
-                                                  token_trans_func_ret)
+                                                  token_trans_func_ret, CACHE_TW)
 
     print("[Returns] Generating comment sequences")
     dp_cms_ret_X_train = process_datapoints_TW(ML_RET_TW_TRAIN, VECTOR_OUTPUT_TRAIN, 'comments_', 'ret_train',
-                                               cm_trans_func_ret)
+                                               cm_trans_func_ret, CACHE_TW)
     dp_cms_ret_X_test = process_datapoints_TW(ML_RET_TW_TEST, VECTOR_OUTPUT_TEST, 'comments_', 'ret_test',
-                                              cm_trans_func_ret)
+                                              cm_trans_func_ret, CACHE_TW)
 
     print("[Train] Generating sequences for available types hints")
     dp_params_train_aval_types, dp_ret_train_aval_types = gen_aval_types_datapoints(ML_PARAM_TW_TRAIN,
                                                                                     ML_RET_TW_TRAIN,
                                                                                     'train',
-                                                                                    VECTOR_OUTPUT_TRAIN)
+                                                                                    VECTOR_OUTPUT_TRAIN,
+                                                                                    CACHE_TW)
     print("[Test] Generating sequences for available types hints")
     dp_params_test_aval_types, dp_ret_test_aval_types = gen_aval_types_datapoints(ML_PARAM_TW_TEST,
                                                                                   ML_RET_TW_TEST,
                                                                                   'test',
-                                                                                  VECTOR_OUTPUT_TEST)
+                                                                                  VECTOR_OUTPUT_TEST,
+                                                                                  CACHE_TW)
 
     print("[Train] Generating vector labels for types")
     params_y_train, ret_y_train = generate_labels(ML_PARAM_TW_TRAIN, ML_RET_TW_TRAIN, 'train', VECTOR_OUTPUT_TRAIN)
