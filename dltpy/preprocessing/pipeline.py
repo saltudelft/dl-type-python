@@ -157,6 +157,12 @@ class Pipeline:
                     print(f"Could not parse file {filename}")
                 except UnicodeDecodeError:
                     print(f"Could not read file {filename}")
+                except:
+                    # Other unexpected exceptions; Failure of single file should not
+                    # fail the entire project processing.
+                    # TODO: A better workaround would be to have a specialized exception thrown
+                    # by the extractor, so that this exception is specialized.
+                    print(f"Could not process file {filename}")
 
             print(f'Preprocessing for {project_id}...')
             preprocessed_functions = {}
