@@ -6,7 +6,7 @@ from gensim.models import Word2Vec
 from typewriter.config_TW import W2V_VEC_LENGTH, AVAILABLE_TYPES_NUMBER
 from dltpy.input_preparation.df_to_vec import vectorize_string
 from time import time
-from os.path import isdir, join
+from os.path import isdir, join, exists
 from os import mkdir
 import pandas as pd
 import numpy as np
@@ -304,16 +304,20 @@ class CommentSequence:
         return self.generate_datapoint(self.seq_length_return())
 
 
-def process_datapoints_TW(f_name, output_path, embedding_type, type, trans_func):
+def process_datapoints_TW(f_name, output_path, embedding_type, type, trans_func, cached_file: bool=False):
 
-    df = pd.read_csv(f_name)
-    datapoints = df.apply(trans_func, axis=1)
+    if not exists(join(output_path, embedding_type + type + '_datapoints_x.npy')) or not cached_file:
+        df = pd.read_csv(f_name)
+        datapoints = df.apply(trans_func, axis=1)
 
-    datapoints_X = np.stack(datapoints.apply(lambda x: x.return_datapoint() if 'ret' in type else x.param_datapoint()),
-                            axis=0)
-    np.save(join(output_path, embedding_type + type + '_datapoints_x'), datapoints_X)
+        datapoints_X = np.stack(datapoints.apply(lambda x: x.return_datapoint() if 'ret' in type else x.param_datapoint()),
+                                axis=0)
+        np.save(join(output_path, embedding_type + type + '_datapoints_x'), datapoints_X)
 
-    return datapoints_X
+        return datapoints_X
+    else:
+        print(f"file {embedding_type + type + '_datapoints_x'} exists!")
+        return
 
 def type_vector(size, index):
     v = np.zeros(size)
@@ -321,25 +325,32 @@ def type_vector(size, index):
     return v
 
 
-def gen_aval_types_datapoints(df_params, df_ret, set_type, output_path):
+def gen_aval_types_datapoints(df_params, df_ret, set_type, output_path, cached_file: bool=False):
     """
     It generates data points for available types.
     :param df_aval_types:
     :return:
     """
 
-    df_params = pd.read_csv(df_params)
-    df_ret = pd.read_csv(df_ret)
+    if not (exists(join(output_path, f'params_{set_type}_aval_types_dp.npy')) and exists(join(output_path,
+            f'ret_{set_type}_aval_types_dp.npy'))) or not cached_file:
 
-    aval_types_params = np.stack(df_params.apply(lambda row: type_vector(AVAILABLE_TYPES_NUMBER, row.param_aval_enc),
-                                                 axis=1), axis=0)
-    aval_types_ret = np.stack(df_ret.apply(lambda row: type_vector(AVAILABLE_TYPES_NUMBER, row.ret_aval_enc),
-                                           axis=1), axis=0)
+        df_params = pd.read_csv(df_params)
+        df_ret = pd.read_csv(df_ret)
 
-    np.save(join(output_path, f'params_{set_type}_aval_types_dp'), aval_types_params)
-    np.save(join(output_path, f'ret_{set_type}_aval_types_dp'), aval_types_ret)
+        aval_types_params = np.stack(df_params.apply(lambda row: type_vector(AVAILABLE_TYPES_NUMBER, row.param_aval_enc),
+                                                    axis=1), axis=0)
+        aval_types_ret = np.stack(df_ret.apply(lambda row: type_vector(AVAILABLE_TYPES_NUMBER, row.ret_aval_enc),
+                                            axis=1), axis=0)
 
-    return aval_types_params, aval_types_ret
+        np.save(join(output_path, f'params_{set_type}_aval_types_dp'), aval_types_params)
+        np.save(join(output_path, f'ret_{set_type}_aval_types_dp'), aval_types_ret)
+
+        return aval_types_params, aval_types_ret
+    else:
+        print(f'file params_{set_type}_aval_types_dp.npy exists!')
+        print(f'file ret_{set_type}_aval_types_dp.npy exists!')
+        return None, None
 
 
 ######################################################################################################################

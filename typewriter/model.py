@@ -5,6 +5,7 @@ This module contains the neural model of TypeWriter
 from dltpy.learning.learn import top_n_fix, store_json
 from sklearn.metrics import classification_report
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.nn as nn
 import numpy as np
@@ -162,18 +163,19 @@ def load_label_tensors_TW(filename, limit=-1):
 
     return torch.from_numpy(np.argmax(np.load(filename), axis=1)[0:limit]).long()
 
-def train_loop_TW(model: nn.Module, data_loader, learning_rate, epochs):
+def train_loop_TW(model: nn.Module, data_loader, learning_rate, epochs, tb_writer: SummaryWriter = None):
 
     model.train()
 
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
-    total_step = len(data_loader)
-    losses = np.empty(total_step * epochs)
+    #total_step = len(data_loader)
+    #losses = np.empty(total_step * epochs)
 
-    i = 0
+    #i = 0
     for epoch in range(1, epochs + 1):
+        total_loss = 0
         for batch_i, (batch_id, batch_tok, batch_cm, batch_type, labels) in enumerate(data_loader):
 
             batch_id, batch_tok, batch_cm, batch_type = batch_id.to(device), batch_tok.to(device), batch_cm.to(device),\
@@ -187,10 +189,15 @@ def train_loop_TW(model: nn.Module, data_loader, learning_rate, epochs):
             # Backward and optimize
             loss.backward()
             optimizer.step()
-            losses[i] = loss.item()
-            i += 1
-            print(f'Epoch [{epoch}/{epochs}], Batch: [{batch_i}/{total_step}], '
-                  f'Loss:{loss.item():.10f}')
+
+            total_loss += loss.item()
+            #losses[i] = loss.item()
+            #i += 1
+            # print(f'Epoch [{epoch}/{epochs}], Batch: [{batch_i}/{total_step}], '
+            #       f'Loss:{loss.item():.10f}')
+        if tb_writer:
+            tb_writer.add_scalar('Loss', total_loss, epoch)
+        print("epoch", epoch, "loss:", total_loss)
 
 
 def make_batch_prediction_TW(model: nn.Module, X_id, X_tok, X_cm, X_type, top_n=1):
@@ -242,12 +249,13 @@ def evaluate_TW(model: nn.Module, data_loader: DataLoader, top_n=1):
     return true_labels, predicted_labels
 
 
-def report_TW(y_true, y_pred, top_n, filename, result_path):
+def report_TW(y_true, y_pred, top_n, filename, result_path, params: dict):
 
     y_pred_fixed = top_n_fix(y_true, y_pred, top_n)
 
     report = classification_report(y_true, y_pred_fixed, output_dict=True)
-    print("Accuracy: ", report["macro avg"])
+    report = {'params': params, 'result': report}
+    print("Accuracy: ", report['result']["macro avg"])
     store_json(report, f"{filename}.json", result_path)
 
     return report
