@@ -304,7 +304,7 @@ class CommentSequence:
         return self.generate_datapoint(self.seq_length_return())
 
 
-def process_datapoints_TW(f_name, output_path, embedding_type, type, trans_func, cached_file: bool):
+def process_datapoints_TW(f_name, output_path, embedding_type, type, trans_func, cached_file: bool=False):
 
     if not exists(join(output_path, embedding_type + type + '_datapoints_x.npy')) or not cached_file:
         df = pd.read_csv(f_name)
@@ -325,7 +325,7 @@ def type_vector(size, index):
     return v
 
 
-def gen_aval_types_datapoints(df_params, df_ret, set_type, output_path, cached_file: bool):
+def gen_aval_types_datapoints(df_params, df_ret, set_type, output_path, cached_file: bool=False):
     """
     It generates data points for available types.
     :param df_aval_types:
