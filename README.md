@@ -4,7 +4,7 @@ This repository contains instructions for using deep learning-based approaches t
 # Requirements
 To install required dependencies for the approaches, run the following command:
 ```
-pip install requirements.txt
+pip install -r requirements.txt
 ```
 
 # Datasets
