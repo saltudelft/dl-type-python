@@ -17,7 +17,7 @@ from dltpy.input_preparation.generate_df import filter_return_dp, format_df, enc
 from dltpy.preprocessing.pipeline import Pipeline
 from dltpy.input_preparation.df_to_vec import generate_labels
 from typewriter.prepocessing import filter_functions, gen_argument_df_TW, gen_most_frequent_avl_types, \
-    encode_aval_types_TW
+    encode_aval_types_TW, make_types_consistent
 from typewriter.extraction import IdentifierSequence, TokenSequence, CommentSequence, process_datapoints_TW, \
     gen_aval_types_datapoints
 from typewriter.extraction import EmbeddingTypeWriter
@@ -154,6 +154,7 @@ if __name__ == '__main__':
         ##################################################################################################################
 
         # Processing the extracted functions #############################################################################
+        df = make_types_consistent(df)
 
         df = filter_functions(df)
 
