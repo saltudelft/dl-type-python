@@ -230,10 +230,10 @@ if __name__ == '__main__':
     #                            dropout_value=0.25)
     #tw_model.load_state_dict(torch.load(join(args.m, 'tw_pretrained_model.pt')))
 
-    tw_model = torch.load(join(args.m, 'tw_pretrained_model.pt'))
+    tw_model = torch.load(join(args.m, 'tw_pretrained_model_combined.pt'))
     label_encoder = pickle.load(open(join(args.m, 'label_encoder.pkl'), 'rb'))
 
-    print("The total number of the mode's parameters:", sum(p.numel() for p in tw_model.parameters()))
+    print("The total number of the model's parameters:", sum(p.numel() for p in tw_model.parameters()))
 
     print("--------------------Argument Types Prediction--------------------")
     id_params, tok_params, com_params, aval_params = load_param_data(TEMP_DIR)

@@ -131,8 +131,8 @@ if __name__ == '__main__':
     model = EnhancedTWModel(input_size, hidden_size, AVAILABLE_TYPES_NUMBER, num_layers, output_size,
                             dropout_rate).to(device)
 
-    # TODO: for now, only one GPU
-    model = torch.nn.DataParallel(model) #, device_ids=[0])
+    if torch.cuda.device_count() > 1:
+        model = torch.nn.DataParallel(model)
 
     idx_of_other = pickle.load(open(LABEL_ENCODER_PATH_TW, 'rb')).transform(['other'])[0]
     res_time = datetime.now().strftime("%b%d_%H-%M-%S")
@@ -164,13 +164,21 @@ if __name__ == '__main__':
             idx = (y_true != idx_of_other) & (y_pred[:, 0] != idx_of_other)
             f1_score_top_n = []
             for top_n in top_n_pred:
-                filename = f"{model.module.__class__.__name__}_{d}_{i}_{top_n}"
+                filename = f"{model.module.__class__.__name__ if torch.cuda.device_count() > 1 else model.__class__.__name__}_{d}_{i}_{top_n}"
                 report_TW(y_true, y_pred, top_n, f"{filename}_unfiltered_{res_time}", RESULTS_DIR, params_dict)
                 report = report_TW(y_true[idx], y_pred[idx], top_n, f"{filename}_filtered_{res_time}", RESULTS_DIR, params_dict)
                 f1_score_top_n.append(report['result']['macro avg']['f1-score'])
             print("Mean f1_score:", mean(f1_score_top_n))
+            
+            # Saving the model ###############################################################################################
+            torch.save(model.module if torch.cuda.device_count() > 1 else model, join(TW_MODEL_FILES, 'tw_pretrained_model_%s.pt' % d))
+            print("Saved the neural model of TyperWriter at:\n%s" % abspath(join(TW_MODEL_FILES, 'tw_pretrained_model_%s.pt' % d)))
+            ##################################################################################################################
 
-            model.module.reset_model_parameters()
+            if torch.cuda.device_count() > 1:
+                model.module.reset_model_parameters()
+            else:
+                model.reset_model_parameters()
     ##################################################################################################################
 
     # Prediction Results ############################################################################################
@@ -180,9 +188,4 @@ if __name__ == '__main__':
         print(f"-------------- Prediction results for {p} --------------")
         for t, r in res.items():
             print(f"{t}: F1-score: {format(r['f1-score'] * 100, '.2f')} - Recall: {format(r['recall'] * 100, '.2f')} - Precision: {format(r['precision'] * 100, '.2f')}")
-    ##################################################################################################################
-
-    # Saving the model ###############################################################################################
-    torch.save(model.module, join(TW_MODEL_FILES, 'tw_pretrained_model.pt'))
-    print("Saved the neural model of TyperWriter at:\n%s" % abspath(join(TW_MODEL_FILES, 'tw_pretrained_model.pt')))
     ##################################################################################################################
