@@ -34,6 +34,16 @@ import pickle
 import time
 
 
+def print_dataset_stats(df: pd.DataFrame):
+    print("Number of source files: ", len(df.file.unique()))
+    print("Number of functions: ", len(df.name))
+    print("Number of functions with comments: ",
+      df[(~df['return_descr'].isnull()) | (~df['func_descr'].isnull())].shape[0])
+    print("Number of functions with return types: ", df['return_type'].count())
+    print("Number of functions with both: ",
+      df[((~df['return_descr'].isnull()) | (~df['func_descr'].isnull())) & (~df['return_type'].isnull())].shape[0])
+
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description="A script for using TypeWriter approach")
@@ -42,6 +52,8 @@ if __name__ == '__main__':
     parser.add_argument("--c", required=False, default=1, type=int, help="Use cached processed files if available. Use 1 for cache, otherwise 0")
     parser.add_argument("--w", required=False, default=4, type=int, help="Number of workers for extracting functions")
     parser.add_argument("--t", required=False, default=None, type=str, help="Path to the file of the visible types")
+    parser.add_argument("--f", required=False, default=None, type=str, help="Path to the list of duplicate files")
+
     args = parser.parse_args()
 
     CACHE_TW = True if args.c == 1 else False
@@ -119,14 +131,16 @@ if __name__ == '__main__':
             print("Writing all the extracted functions in a CSV file: ", DATA_FILE_TW)
             df.to_csv(DATA_FILE_TW, index=False)
 
-        print("Number of source files: ", len(df.file.unique()))
-        print("Number of functions: ", len(df.name))
+        print_dataset_stats(df)
 
-        print("Number of functions with comments: ",
-            df[(~df['return_descr'].isnull()) | (~df['func_descr'].isnull())].shape[0])
-        print("Number of functions with return types: ", df['return_type'].count())
-        print("Number of functions with both: ",
-            df[((~df['return_descr'].isnull()) | (~df['func_descr'].isnull())) & (~df['return_type'].isnull())].shape[0])
+        # Remove duplicate files from the dataset
+        if args.f is not None:
+            with open(args.f, 'r') as f:
+                duplicate_src_files = f.read().splitlines()
+            df = df[~df['file'].isin(duplicate_src_files)].copy()
+
+            print("Duplicate files are removed from the dataset...")
+            print_dataset_stats(df)
 
         # Splits the extracted functions into train and test sets by files
         train_files, test_files = train_test_split(pd.DataFrame(df['file'].unique(), columns=['file']), test_size=0.2)
